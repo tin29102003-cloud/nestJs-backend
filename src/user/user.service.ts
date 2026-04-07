@@ -11,5 +11,8 @@ export class UserService {
     async FindUserToLogin(tai_khoan: string): Promise<User | null>{
         return await this.userRepository.findUserByEmail(tai_khoan);
     }
+    async UpdateUser(id: number, data: Partial<User>): Promise<Boolean>{
+        return await this.userRepository.UpdateUserById(id,data);
+    }
     
 }

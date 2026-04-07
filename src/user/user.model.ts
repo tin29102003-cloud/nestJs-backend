@@ -19,7 +19,7 @@ export class User extends Model {
       this.setDataValue('tai_khoan', value?.trim());
     },
   })
-  tai_khoan!: string;
+  declare tai_khoan: string;
 
   @AllowNull(false)
   @Column({
@@ -28,10 +28,10 @@ export class User extends Model {
       this.setDataValue('email', value?.trim());
     },
   })
-  email!: string;
+  declare email: string;
 
   @Column(DataType.STRING)
-  mat_khau!: string | null;
+  declare mat_khau: string | null;
 
   @Column({
     type: DataType.STRING,
@@ -39,7 +39,7 @@ export class User extends Model {
       this.setDataValue('ho_ten', value?.trim());
     },
   })
-  ho_ten!: string | null;
+  declare ho_ten: string | null;
 
   @Column({
     type: DataType.STRING,
@@ -47,42 +47,42 @@ export class User extends Model {
       this.setDataValue('ten_shop', value?.trim());
     },
   })
-  ten_shop!: string | null;
+  declare ten_shop: string | null;
 
   @Default(false)
   @Column(DataType.BOOLEAN)
-  is_shop!: boolean;
+  declare is_shop: boolean;
 
   @Default(0)
   @Column(DataType.TINYINT)
-  vai_tro!: number;
+  declare vai_tro: number;
 
   @Column(DataType.STRING)
-  hinh!: string | null;
+  declare hinh: string | null;
 
   @Default('local')
   @AllowNull(false)
   @Column(DataType.STRING)
-  provider!: string;
+  declare provider: string;
 
   @Column(DataType.STRING)
-  provider_id!: string;
+  declare provider_id: string;
 
   @Default(0)
   @Column(DataType.TINYINT)
-  khoa!: number;
+  declare khoa: number;
 
   @Column(DataType.STRING)
-  token!: string | null;
+  declare token: string | null;
 
   @Column(DataType.DATE)
-  token_expire!: Date | null;
+  declare token_expire: Date | null;
 
   @Column(DataType.STRING)
-  refresh_token!: string | null;
+  declare refresh_token: string | null;
 
   @Column(DataType.DATE)
-  xac_thuc_email_luc!: Date | null;
+  declare xac_thuc_email_luc: Date | null;
 
   @Column({
     type: DataType.STRING,
@@ -90,10 +90,10 @@ export class User extends Model {
       this.setDataValue('otp', value?.trim());
     },
   })
-  otp!: string | null;
+  declare otp: string | null;
 
   @Column(DataType.DATE)
-  otp_expire!: Date | null;
+  declare otp_expire: Date | null;
 
   @Column({
     type: DataType.STRING,
@@ -101,21 +101,21 @@ export class User extends Model {
       this.setDataValue('dien_thoai', value?.trim());
     },
   })
-  dien_thoai!: string | null;
+  declare dien_thoai: string | null;
 
   @Default(0)
   @Column(DataType.INTEGER)
-  token_version!: number;
+  declare token_version: number;
 
   @Default(0)
   @Column(DataType.INTEGER)
-  login_failed_count!: number;
+  declare login_failed_count: number;
 
   @Column(DataType.DATE)
-  last_login_fail!: Date | null;
+  declare last_login_fail: Date | null;
 
   @Column(DataType.DATE)
-  locked_until!: Date | null;
+  declare locked_until: Date | null;
 
   @Column({
     type: DataType.STRING,
@@ -123,7 +123,7 @@ export class User extends Model {
       this.setDataValue('message_protection_code', value?.trim());
     },
   })
-  message_protection_code!: string | null;
+  declare message_protection_code: string | null;
 
   @Column({
     type: DataType.STRING,
@@ -131,9 +131,9 @@ export class User extends Model {
       this.setDataValue('two_fa_secret', value?.trim());
     },
   })
-  two_fa_secret!: string | null;
+  declare two_fa_secret: string | null;
 
   @Default(false)
   @Column(DataType.BOOLEAN)
-  is_2fa_enable!: boolean;
+  declare is_2fa_enable: boolean;
 }
