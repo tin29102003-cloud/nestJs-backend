@@ -1,7 +1,10 @@
 import { User } from "../user.model";
 export const  USER_REPOSITORY_INTERFACE = 'UserRepositoryIntereface';
 export interface UserRepositoryIntereface{
-    findUserByEmail(tai_khoan: string): Promise<User | null>;
+    findUserByOr(condition: Partial<User>[]): Promise<User | null>;
     FindUserById(id: number): Promise<User | null>;
-    UpdateUserById(id: number, data: Partial<User>): Promise<boolean>;
+    UpdateUserBy(condition: Partial<User>, data: Partial<User>): Promise<boolean>;
+    FindUserBy(condition: Partial<User>):Promise<User | null>;
+    CreateUser(condition: Partial<User>): Promise<User>;
+    findValidTokenUser(email: string, token: string, time: Date):Promise<User | null>;
 }

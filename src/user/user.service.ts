@@ -8,11 +8,19 @@ export class UserService {
         @Inject(USER_REPOSITORY_INTERFACE)// tiêm cái inter vào. nestjt sẽ tự nhet thằng user repository vô
         private readonly userRepository: UserRepositoryIntereface
     ){}
-    async FindUserToLogin(tai_khoan: string): Promise<User | null>{
-        return await this.userRepository.findUserByEmail(tai_khoan);
+    async FindFirstByOr(condition: Partial<User>[]): Promise<User | null>{
+        return await this.userRepository.findUserByOr(condition);
     }
-    async UpdateUser(id: number, data: Partial<User>): Promise<Boolean>{
-        return await this.userRepository.UpdateUserById(id,data);
+    async UpdateUser(condition: Partial<User>, data: Partial<User>): Promise<Boolean>{
+        return await this.userRepository.UpdateUserBy(condition,data);
     }
-    
+    async FindFirstBy(condition: Partial<User>): Promise<User|null>{
+        return await this.userRepository.FindUserBy(condition);
+    }
+    async createUser(data: Partial<User>): Promise<User | null>{
+        return await this.userRepository.CreateUser(data);
+    }
+    async findValidTokenUser(email: string , token: string, time: Date): Promise<User | null>{
+        return await this.userRepository.findValidTokenUser(email, token, time);
+    }
 }

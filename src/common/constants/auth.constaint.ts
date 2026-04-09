@@ -1,4 +1,7 @@
 import { JwtPayload } from "jsonwebtoken";
+import { ResultVerifyEmail } from "./notification.constant";
+import { User } from "src/user/user.model";
+
 
 export const AUTH_PROVIDER = {
     LOCAL: 'local',
@@ -31,6 +34,7 @@ export interface SafeUserData{
 export const LOGIN_FAIL_MAX=5
  export const PERM_LOCK_MAX=8
 export const LOCK_DURATION= 5 * 60 * 1_000
+export const TOKEN_EXPIRE_IN = 15 * 60 * 1_000;
 export type AuthLoginResult =
   | {
       require_2fa: true;
@@ -42,3 +46,22 @@ export type AuthLoginResult =
       token: string;
       refreshToken: string;
     };
+    export type VerifyRegiterResult = 
+    | {
+        type: ResultVerifyEmail.invalid_request,
+    } | {
+        type: ResultVerifyEmail.invalid_token
+    }| {
+        type: ResultVerifyEmail.success, 
+        user: SafeUserData
+    }
+export enum ROLE {
+    PUBLIC = 0,
+    ADMIN = 1
+}
+export interface mailOptions {
+    from: string;
+    to: string;
+    subject: string;
+    html: string;
+}
