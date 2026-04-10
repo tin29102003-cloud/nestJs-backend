@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsNumberString,  IsOptional,  IsString,  Matches , MinLength, } from 'class-validator'
+import { IsEmail, isNotEmpty, IsNotEmpty, IsNumber, IsNumberString,  IsOptional,  IsString,  Matches , minLength, MinLength, } from 'class-validator'
 export class LoginDto{
     @IsNotEmpty({message: "Vui lòng nhập email hoặc tài khoản"})
     @IsString()
@@ -41,4 +41,24 @@ export class VerifyRegisterDto{
   @IsOptional()
   @IsString()
   token?: string;
+}
+export class ResendVerifyRegisterDto{
+  @IsNotEmpty({message: "Bạn chưa nhập email"})
+  @IsEmail({}, {message: "Email chưa đúng định dạng"})
+  email!: string
+}
+export class OtpChangePassDto {
+  @IsNotEmpty({message: "Bạn chưa nhập otp"})
+  @IsNumberString({},{message: "Otp phải là số"})
+  @MinLength(5,{message: "mã otp phải trên 5 ký tự"})
+  otp!: string;
+
+  @IsNotEmpty({message: "Bạn chưa nhập mật khẩu mới"})
+  @MinLength(8, { message: 'Mật khẩu phải trên 8 ký tự' })
+  @Matches(/[A-Z]/, { message: 'Mật khẩu phải có ít nhất 1 chữ in hoa' })
+  @Matches(/[!@#$%^&*(),.?":{}|<>]/, { message: 'Mật khẩu phải có ít nhất 1 ký tự đặc biệt' })
+  mat_khau_moi!: string
+
+  @IsNotEmpty({message: "Bạn chưa nhập mật khẩu nhập lại"})
+  mat_khau_nhap_lai!: string
 }

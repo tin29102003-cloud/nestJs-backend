@@ -34,6 +34,7 @@ export const LOGIN_FAIL_MAX=5
  export const PERM_LOCK_MAX=8
 export const LOCK_DURATION= 5 * 60 * 1_000
 export const TOKEN_EXPIRE_IN = 15 * 60 * 1_000;
+export const OTP_EXPIRE = 5 * 60 * 1_000;
 export type AuthLoginResult =
   | {
       require_2fa: true;

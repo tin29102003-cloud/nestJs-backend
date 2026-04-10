@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { UserRepositoryIntereface } from "../../domain/interface/user.repository.interface";
 import { InjectModel } from "@nestjs/sequelize";
-import { Op, WhereOptions } from "sequelize";
+import { Op } from "sequelize";
 import { AUTH_PROVIDER } from "src/common/constants/auth.constaint";
 import { UserModel } from "../model/user.model";
 import { User } from "src/user/domain/entities/user.entity";
@@ -28,7 +28,7 @@ export class UserRepository implements UserRepositoryIntereface{
             const user =  await this.userModel.findByPk(id);
              return  user ? this.ToEntity(user): null
         }
-        async FindUserBy(condition: WhereOptions<User>): Promise<User | null> {
+        async FindUserBy(condition: Partial<User>): Promise<User | null> {
             const user = await this.userModel.findOne({
                 where: condition
             })

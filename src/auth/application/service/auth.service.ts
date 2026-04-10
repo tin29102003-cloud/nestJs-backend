@@ -1,21 +1,29 @@
-import { BadRequestException, ConflictException, ForbiddenException, HttpException, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, HttpException, Inject, Injectable, Logger, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import bcrypt from 'node_modules/bcryptjs';
 import jwt from 'jsonwebtoken'
 import type { StringValue } from "ms";
 import crypto from 'crypto';
-import {  AuthLoginResult, CustomJwtPayload, LOCK_DURATION, LOGIN_FAIL_MAX, PERM_LOCK_MAX, RefreshJwtPayload, ROLE, SafeUserData, TempJwtPayLoad, TOKEN_EXPIRE_IN, VerifyRegiterResult } from 'src/common/constants/auth.constaint';
+import {  AUTH_PROVIDER, AuthLoginResult, CustomJwtPayload, LOCK_DURATION, LOGIN_FAIL_MAX, OTP_EXPIRE, PERM_LOCK_MAX, RefreshJwtPayload, ROLE, SafeUserData, TempJwtPayLoad, TOKEN_EXPIRE_IN, VerifyRegiterResult } from 'src/common/constants/auth.constaint';
 import { Notification_Interface, type NotificationInterface } from 'src/notification/domain/interface/notification.interface';
-import { RegisterEmailpayLoad, ResultVerifyEmail, VerifyEmailPayload } from 'src/common/constants/notification.constant';
+import { ForgotPassPayload, RegisterEmailpayLoad, ResultVerifyEmail, VerifyEmailPayload } from 'src/common/constants/notification.constant';
 import { UserService } from 'src/user/application/service/user.service';
 import { User } from 'src/user/domain/entities/user.entity';
+import { EmailNotificationService } from 'src/notification/infrastructure/chanels/email-notification.service';
+import { CrytoUlti } from 'src/config/ultis/crypto.util';
 @Injectable()
 export class AuthService {
+	private readonly logger = new Logger(AuthService.name);
 	constructor(
 		private readonly userService: UserService,
+		
 		@Inject(Notification_Interface)
 		private  notificationServiceSend:  NotificationInterface,
 		
 	){}
+
+	private generateExpireTime(now,lockTime: number): Date{
+		return new Date(now.getTime() +  lockTime);
+	}
 	
 	//hàm privaate sinh token
 	private async issueTokenPair(user: User){
@@ -28,19 +36,18 @@ export class AuthService {
 		}
 		const jwtExpiresIn  =  process.env.ACCESS_TOKEN_EXPIRES_IN ?? `15m`;
 		const refreshJwtExpiresIn = process.env.REFRESH_TOKEN_EXPIRES_IN ?? "7d";
-		// console.log(jwtExpiresIn, refreshJwtExpiresIn);
 		const token = jwt.sign(
 			accessTokenPayLoad,
 			process.env.JWT_SECRET ||'Your-secret-pass',
 			{expiresIn: jwtExpiresIn as StringValue}
 		);
-		// console.log(token);
+		
 		const refreshToken = jwt.sign(
 			refreshTokenPayLoad,
 			process.env.REFRESH_JWT_SECRET ||'Your-secret-pass',
 			{expiresIn: refreshJwtExpiresIn as StringValue}
 		)
-		// console.log(refreshToken);
+		
 		const  salt =  bcrypt.genSaltSync(10);
 		const hasedRefreshToken =  bcrypt.hashSync(refreshToken, salt);
 		this.userService.UpdateUser({id: user.id}, {
@@ -48,6 +55,7 @@ export class AuthService {
 		});
 		return {token, refreshToken};
 	}
+	
 
 	private async handleLoginFail(user: User) {
 		const now = new Date();
@@ -149,7 +157,6 @@ export class AuthService {
 	}
 	async RegisterService(tai_khoan: string, email: string, mat_khau: string, mat_khau_nhap_lai: string, dien_thoai: string){
 		const existingUser = await this.userService.FindFirstByOr([{tai_khoan},{email}]);
-		console.log(existingUser);
 		if(existingUser){
 			if(existingUser.tai_khoan === tai_khoan){
 				throw new ConflictException("Tài khoản đã tồn tại , vui lòng nhập tài khoản khác");
@@ -165,7 +172,7 @@ export class AuthService {
 		const salt = bcrypt.genSaltSync(10);
 		const hashedPassword =  bcrypt.hashSync(mat_khau, salt);
 		const token = crypto.randomBytes(32).toString('hex');
-		const tokenExpired = new Date(now.getTime() + TOKEN_EXPIRE_IN);
+		const tokenExpired = this.generateExpireTime(now,LOCK_DURATION);
 		await this.userService.createUser({
 			tai_khoan,
 			email,
@@ -183,7 +190,6 @@ export class AuthService {
 		// const noi
 	}
 	async VerifyService(email?: string, token?: string): Promise<VerifyRegiterResult>{
-		// console.log(email, token);
 		
 		if(!email || !token){
 			return {
@@ -206,5 +212,108 @@ export class AuthService {
 			type: ResultVerifyEmail.success,
 			user: user
 		}
+	}
+	async resendRegistrationService(email: string){
+		const user = await this.userService.FindFirstByOr([{tai_khoan: email}, {email: email}]);
+		const now = new Date();
+		if(!user){
+			throw new UnauthorizedException("Nếu email này tồn tại, một thư xác thực sẽ được gửi");
+		}
+		if(user.xac_thuc_email_luc){
+			throw new UnauthorizedException("Tài khoản này đã được xác  thực từ trước");
+		}
+		const token = crypto.randomBytes(32).toString('hex');
+		const tokenExpired = this.generateExpireTime(now,LOCK_DURATION);
+		const updateData: Partial<User> = {
+			token_expire: tokenExpired,
+			token: token
+		};
+		await this.userService.UpdateUser({id: user.id}, updateData);
+		const verifyLink = `${process.env.SERVER}/api/auth/xac-thuc-dang-ky?email=${email}&token=${token}`;
+		const payload: RegisterEmailpayLoad = {
+			tai_khoan: user.tai_khoan,
+			verifyLink: verifyLink
+		};
+		this.notificationServiceSend.send('regiter_email', email, payload);
+	}
+	async forgotPassService(email: string){
+		const user = await this.userService.FindFirstBy({email: email});
+		if(!user){
+			this.logger.warn("Email không tồn tại");
+			return {
+				message: "Đã gửi mã OTP qua gmail, vui lòng kiểm tra mail để thực hiện việc đổi mật khẩu"
+			}
+		}
+		if(user.provider !== AUTH_PROVIDER.LOCAL || !user.mat_khau){
+			this.logger.warn("Không thể đổi  mật khẩu trong cục bộ vì tài khoản đã đăng ký bằng facebook hoặc google")
+			return {
+				message: "Đã gửi mã OTP qua gmail, vui lòng kiểm tra mail để thực hiện việc đổi mật khẩu"
+			}
+		}
+		const now = new Date();
+		if(!user.xac_thuc_email_luc || user.xac_thuc_email_luc > now){
+			this.logger.warn("Email chưa được xác thực hoặc thời hạn không chính xác");
+			return {
+				message: "Đã gửi mã OTP qua gmail, vui lòng kiểm tra mail để thực hiện việc đổi mật khẩu"
+			}
+		}
+		const otp = crypto.randomInt(10_000, 100_000).toString();////min là 100000 và max là 999999
+		const salt = bcrypt.genSaltSync(10);
+		const  otpHash = bcrypt.hashSync(otp, salt);
+		const updateData: Partial<User> = {
+			otp : otpHash,
+			otp_expire: this.generateExpireTime(now,TOKEN_EXPIRE_IN)
+		}
+		await this.userService.UpdateUser({id: user.id}, updateData);
+		const payload: ForgotPassPayload = {
+			tai_khoan: user.tai_khoan,
+			otp: otp
+		}
+		this.notificationServiceSend.send('forget_pass_email', email, payload);
+		return {
+			message: "Đã gửi mã OTP qua gmail, vui lòng kiểm tra mail để thực hiện việc đổi mật khẩu"
+		}
+	}
+	async VerifyOtpForgotPass(otp: string, mat_khau_moi: string, mat_khau_nhap_lai: string, cookie: string){
+		if(!cookie){
+			throw new BadRequestException("Phiên làm việc đã hết hạn");
+		}
+		const email = CrytoUlti.decrypt(cookie)
+		
+		console.log(email);
+		if(!email){
+			throw new NotFoundException("Không thể xác định người dùng từ phiên làm việc");
+		}
+		if(mat_khau_moi !== mat_khau_nhap_lai){
+			throw new BadRequestException("Mật khẩu không trùng mật khẩu nhập lại");
+		}
+		const user = await this.userService.FindFirstBy({email: email, provider: AUTH_PROVIDER.LOCAL});
+		if(!user){
+			throw  new UnauthorizedException("Thông tin xác thực không chính xác")
+		}
+		const now = new Date();
+		if(!user.otp_expire || user.otp_expire < now || !user.otp){
+			throw new BadRequestException("OTP đã hết hạn vui lòng gửi lại mã otp để tiến hành đổi mật khẩu")
+		}
+		const isValid =  bcrypt.compareSync(otp, user.otp);
+		if(!isValid){
+			throw new BadRequestException("Mã otp  không chính xác  vui long nhập lại");
+		}
+		if(!user.mat_khau){
+			throw new ForbiddenException("Tài khoản này không thể thay đổi mật khẩu bằng phương thức cục bộ")
+		}
+		const isMatch  = bcrypt.compareSync(mat_khau_moi, user.mat_khau);
+		if(isMatch){
+			throw new BadRequestException("Vì lý do bảo mật nên mật khẩu mới không được trùng với mật khẩu củ");
+		}
+		const salt = bcrypt.genSaltSync(10);
+		const updateData: Partial<User> = {
+			mat_khau: bcrypt.hashSync(mat_khau_moi, salt),
+			otp : null,
+			otp_expire: null,
+			token_version: user.token_version + 1
+		}
+		await this.userService.UpdateUser({id: user.id}, updateData);
+		
 	}
 }

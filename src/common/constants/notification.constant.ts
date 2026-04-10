@@ -1,6 +1,7 @@
 export type NotificationType =
   | 'regiter_email'
   | 'verify_email'
+  | 'forget_pass_email'
 export interface RegisterEmailpayLoad{
   tai_khoan: string,
   verifyLink: string
@@ -18,4 +19,7 @@ export enum ResultVerifyEmail  {
   invalid_request = 'invalid_request',
   invalid_token = 'invalid_token'
 }
-
+export interface ForgotPassPayload{
+  tai_khoan: string,
+  otp: string
+}
