@@ -1,6 +1,5 @@
 import { JwtPayload } from "jsonwebtoken";
 import { ResultVerifyEmail } from "./notification.constant";
-import { User } from "src/user/user.model";
 
 
 export const AUTH_PROVIDER = {

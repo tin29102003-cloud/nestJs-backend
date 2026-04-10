@@ -1,14 +1,16 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { NotificationInterface } from "../interface/notification.interface";
+import { Inject, Injectable, Logger } from "@nestjs/common";
+import { NotificationInterface } from "../../domain/interface/notification.interface";
 import nodemailer from 'nodemailer'
-import { TemplateService } from "../template/template.service";
 import { mailOptions } from "src/common/constants/auth.constaint";
 import { NotificationType } from "src/common/constants/notification.constant";
+import { TEMPLATE_INTERFACE, type TemplateServiceInterface } from "src/notification/domain/interface/template.inteface";
 @Injectable()
 export class EmailNotificationService implements NotificationInterface{
     private readonly logger  = new Logger(EmailNotificationService.name);
     private tranposter: nodemailer.Transporter;
-    constructor(private readonly templateService: TemplateService){
+    constructor(
+        @Inject(TEMPLATE_INTERFACE)
+        private readonly templateService: TemplateServiceInterface){
         this.tranposter = nodemailer.createTransport({
             service: 'gmail',
             auth: {user: process.env.MAIL_USER || "baodbrr@gmail.com", pass: process.env.MAIL_PASS || "zxcs cxcv dsfd edsf"},

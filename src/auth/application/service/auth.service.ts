@@ -1,15 +1,13 @@
 import { BadRequestException, ConflictException, ForbiddenException, HttpException, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
 import bcrypt from 'node_modules/bcryptjs';
-import { UserService } from 'src/user/user.service';
 import jwt from 'jsonwebtoken'
-import { User } from 'src/user/user.model';
 import type { StringValue } from "ms";
 import crypto from 'crypto';
-import nodemailer from 'nodemailer';
-import { AUTH_PROVIDER, AuthLoginResult, CustomJwtPayload, LOCK_DURATION, LOGIN_FAIL_MAX, PERM_LOCK_MAX, RefreshJwtPayload, ROLE, SafeUserData, TempJwtPayLoad, TOKEN_EXPIRE_IN, VerifyRegiterResult } from 'src/common/constants/auth.constaint';
-import { Notification_Interface, type NotificationInterface } from 'src/notification/interface/notification.interface';
+import {  AuthLoginResult, CustomJwtPayload, LOCK_DURATION, LOGIN_FAIL_MAX, PERM_LOCK_MAX, RefreshJwtPayload, ROLE, SafeUserData, TempJwtPayLoad, TOKEN_EXPIRE_IN, VerifyRegiterResult } from 'src/common/constants/auth.constaint';
+import { Notification_Interface, type NotificationInterface } from 'src/notification/domain/interface/notification.interface';
 import { RegisterEmailpayLoad, ResultVerifyEmail, VerifyEmailPayload } from 'src/common/constants/notification.constant';
-import { Op } from 'sequelize';
+import { UserService } from 'src/user/application/service/user.service';
+import { User } from 'src/user/domain/entities/user.entity';
 @Injectable()
 export class AuthService {
 	constructor(

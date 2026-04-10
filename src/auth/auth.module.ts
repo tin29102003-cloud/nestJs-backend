@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
-import { AuthController } from './auth.controller';
-import { AuthService } from './auth.service';
+import { AuthController } from './controllers/auth.controller';
+import { AuthService } from './application/service/auth.service';
 import { UserModule } from 'src/user/user.module';
 import { NotificationModule } from 'src/notification/notification.module';
 

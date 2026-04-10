@@ -1,16 +1,18 @@
-import { Body, Controller, Get, Logger, Post, Query, Res } from '@nestjs/common';
-import { AuthService } from './auth.service';
-import {  LoginDto, RegisterDto, VerifyRegisterDto } from './auth.dto';
+import { Body, Controller, Get, Inject, Logger, Post, Query, Res } from '@nestjs/common';
+import { AuthService } from '../application/service/auth.service';
+import {  LoginDto, RegisterDto, VerifyRegisterDto } from './dto/auth.dto';
 import { type Response } from 'express';
 import { VerifyEmailPayload } from 'src/common/constants/notification.constant';
-import { TemplateService } from 'src/notification/template/template.service';
+import { TemplateService } from 'src/notification/infrastructure/template/template.service';
+import { TEMPLATE_INTERFACE, type TemplateServiceInterface } from 'src/notification/domain/interface/template.inteface';
 
 @Controller('api/auth')
 export class AuthController {
     private readonly logger = new Logger(AuthController.name);
     constructor(
         private readonly authService: AuthService,
-        private readonly templateService: TemplateService,
+        @Inject(TEMPLATE_INTERFACE)
+        private readonly templateService: TemplateServiceInterface,
        
     ){}
     private setAuthCookie(res: Response,token: string, refreshToken: string){

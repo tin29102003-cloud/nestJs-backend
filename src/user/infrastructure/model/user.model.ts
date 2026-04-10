@@ -11,7 +11,7 @@ import {
   tableName: 'users',
   timestamps: true,
 })
-export class User extends Model {
+export class UserModel extends Model {
   
   @Column({
     type: DataType.STRING,

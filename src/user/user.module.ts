@@ -1,12 +1,13 @@
 import { Module } from '@nestjs/common';
-import { UserService } from './user.service';
+
 import { SequelizeModule } from '@nestjs/sequelize';
-import { User } from './user.model';
-import { USER_REPOSITORY_INTERFACE } from './interface/user.repository.interface';
-import { UserRepository } from './repository/user.repository';
+import { USER_REPOSITORY_INTERFACE } from './domain/interface/user.repository.interface';
+import { UserRepository } from './infrastructure/repositories/user.repository';
+import { UserService } from './application/service/user.service';
+import { UserModel } from './infrastructure/model/user.model';
 
 @Module({
-  imports: [SequelizeModule.forFeature([User])],//quản lý bảng user
+  imports: [SequelizeModule.forFeature([UserModel])],//quản lý bảng user
   providers: [UserService,{
     provide: USER_REPOSITORY_INTERFACE,
     useClass: UserRepository

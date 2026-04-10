@@ -1,4 +1,5 @@
-import { User } from "../user.model";
+import { User } from "../entities/user.entity";
+
 export const  USER_REPOSITORY_INTERFACE = 'UserRepositoryIntereface';
 export interface UserRepositoryIntereface{
     findUserByOr(condition: Partial<User>[]): Promise<User | null>;

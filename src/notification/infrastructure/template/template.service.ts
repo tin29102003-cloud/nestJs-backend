@@ -4,9 +4,10 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as handlebars from 'handlebars';
 import { NotificationType } from 'src/common/constants/notification.constant';
+import { TemplateServiceInterface } from 'src/notification/domain/interface/template.inteface';
 
 @Injectable()
-export class TemplateService {
+export class TemplateService implements TemplateServiceInterface{
   private readonly logger = new Logger(TemplateService.name);
 
   /**
