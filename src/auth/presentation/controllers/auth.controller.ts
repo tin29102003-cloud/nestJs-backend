@@ -1,23 +1,34 @@
-import { Body, Controller, Get, Inject, Logger, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Inject, Logger, Post, Query, Req, Res, SetMetadata, UseGuards } from '@nestjs/common';
 import { type Request, type Response } from 'express';
 import { VerifyEmailPayload } from 'src/common/constants/notification.constant';
 import { TEMPLATE_INTERFACE, type TemplateServiceInterface } from 'src/notification/domain/interface/template.inteface';
 import { AuthService } from 'src/auth/application/service/auth.service';
-import { LoginDto, OtpChangePassDto, RegisterDto, ResendVerifyRegisterDto, VerifyRegisterDto } from '../dto/auth.dto';
-import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
+import { ChangePassDto, LoginDto, OtpChangePassDto, RegisterDto, ResendVerifyRegisterDto, VerifyRegisterDto } from '../dto/auth.dto';
+import { Throttle, ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AUTH_THROTTLE } from 'src/config/throttler.config';
 import { CrytoUlti } from 'src/config/ultis/crypto.util';
+import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
+import { AuthUser, CookieName, RefreshJwtPayload } from 'src/common/constants/auth.constaint';
+import { RefreshAuthGuard } from 'src/common/guards/refresh-auth.guard';
 
 @Controller('api/auth')
 export class AuthController {
 	private readonly logger = new Logger(AuthController.name);
 	private readonly deploy: boolean =  process.env.NODE_ENV === 'production'
+	private readonly HOME_URL: string = process.env.LOGIN_URL ?? "http://phimmoi.com";
 	constructor(
 		private readonly authService: AuthService,	
 		@Inject(TEMPLATE_INTERFACE)
 		private readonly templateService: TemplateServiceInterface,
 	   
 	){}
+	private CleanCookie(cookieName: CookieName, res: Response){
+		res.clearCookie(cookieName,{
+			httpOnly: this.deploy ? true : false,
+			sameSite: this.deploy ? 'strict' : 'lax',
+			path: '/',
+		})
+	}
 	private setAuthCookie(res: Response,token: string, refreshToken: string){
 		 const cookieMaxAge = process.env.COOKIE_ACCESS_MAX_AGE || 15 * 60 * 1_000;
 			const cookieMaxAgeRefresh = process.env.COOKIE_REFRESH_MAX_AGE || 7 * 24 * 60 * 60 * 1_000;
@@ -171,6 +182,7 @@ export class AuthController {
 		
 	}   
 	@UseGuards(ThrottlerGuard)
+	
 	@Throttle({default: AUTH_THROTTLE.RESEND_REGISTER_EMAIL})
 	@Post('gui-lai-xac-thuc-dk')
 	async ResendRegisterAccount(
@@ -222,7 +234,98 @@ export class AuthController {
 		}
 	}
 	
+	@UseGuards(JwtAuthGuard)
+	@Post('doi-pass')
+	async ChangePass(
+		@Body() body: ChangePassDto,
+		@Req() req: Request,
+		@Res({passthrough: true}) res: Response
+	){
+		const userPayload = req['user'] as AuthUser
+		const {id, tai_khoan} = userPayload;
+		const  result = await this.authService.ChangPass(id, tai_khoan, body.mat_khau_cu, body.mat_khau_moi, body.mat_khau_nhap_lai);
+		this.setAuthCookie(res, result.token, result.refreshToken);
+		return {
+			message:"Đổi mật khẩu thành công",
+			success: true
+		}
+	}
 
+	@UseGuards(ThrottlerModule)
+	@Throttle({default: AUTH_THROTTLE.LOGIN_FAST})
+	@Post('dang-nhap-nhanh')
+	async LoginFast(
+		@Body() body: ResendVerifyRegisterDto,
+		@Res({passthrough: true}) res: Response
+	){
+		const result = await this.authService.LoginFast(body.email);
+		return {
+			success: true,
+			message: result.message
+		}
+	}
+	
+	@UseGuards(ThrottlerModule)
+	@Throttle({default: AUTH_THROTTLE.VERIFY_LOGIN_FAST})
+	@Get('xac-thuc-dang-nhap-nhanh')
+	async VerifyLoginFast(
+		@Query() query: VerifyRegisterDto,
+		@Res({passthrough: true}) res: Response 
+	){
+		const {email, token} = query;
+		const result = await this.authService.verifyLoginFast(email, token);
+		this.setAuthCookie(res, result.token, result.refreshToken);
+		return res.redirect(this.HOME_URL);
+	}
+	
+	@UseGuards(JwtAuthGuard)
+	@Get('profile')
+	async getProfile(
+		@Req() req: Request,
+	){
+		const userPayload = req['user'] as AuthUser
+		const {id} = userPayload;
+		const reuslt = await this.authService.GetProfile(id);
+		return {
+			success: true,
+			user: reuslt.safeUserData,
+			message: "Lấy thông tin user thanh công"
+		}
+	}
+
+	@UseGuards(JwtAuthGuard)
+	@Post('logout')
+	async logOut(
+		@Req() req: Request,
+		@Res() res: Response
+	){
+		const payload = req['user'] as AuthUser;
+
+		this.CleanCookie('_atkn',res);
+		this.CleanCookie('_rtkn',res);
+		return {
+			message: "Đăng xuất thành công",
+			success: true
+		}
+	}
+	
+	@UseGuards(RefreshAuthGuard)
+	@Post('refresh-token')
+	async RefreshToken(
+		@Req() req: Request,
+		@Res() res: Response
+	){
+		const payload = req['refresh-payload'] as RefreshJwtPayload;
+		const refreshToken: string = req['refresh-token'];
+		const result = await this.authService.RefreshToken(payload.id,payload.token_version, refreshToken);
+		this.setAuthCookie(res, result.token, result.refreshToken);
+		return {
+			success: true,
+			message: "lấy Token AT thành công",
+			user: result.user
+		}
+
+	}
 	
 
 	

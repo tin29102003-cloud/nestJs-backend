@@ -1,7 +1,9 @@
 import { JwtPayload } from "jsonwebtoken";
 import { ResultVerifyEmail } from "./notification.constant";
 
-
+export type CookieName = 
+    |'_atkn'
+    | '_rtkn'
 export const AUTH_PROVIDER = {
     LOCAL: 'local',
     GOOGLE: 'google',
@@ -59,9 +61,20 @@ export enum ROLE {
     PUBLIC = 0,
     ADMIN = 1
 }
+export enum BOOLEAN{
+    true = 1,
+    false = 0
+}
 export interface mailOptions {
     from: string;
     to: string;
     subject: string;
     html: string;
+}
+export interface AuthUser {
+    id: number;
+    tai_khoan: string;
+    vai_tro: number;
+    ho_ten: string | null;
+    token_version: string | number;
 }

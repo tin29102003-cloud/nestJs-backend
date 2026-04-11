@@ -6,8 +6,8 @@ import { ConfigModule } from '@nestjs/config';
 
 import { NotificationModule } from './notification/notification.module';
 import databaseConfig from './config/database.config';
-import { UserModule } from './user/presentation/user.module';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { UserModule } from './user/user.module';
 @Module({
   imports: [
     //load biến môi trường và file env toàn cuc

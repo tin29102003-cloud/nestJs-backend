@@ -62,3 +62,17 @@ export class OtpChangePassDto {
   @IsNotEmpty({message: "Bạn chưa nhập mật khẩu nhập lại"})
   mat_khau_nhap_lai!: string
 }
+export class ChangePassDto{
+  @IsNotEmpty({message: "Bạn chưa nhập mật khẩu cũ"})
+  @IsString()
+  mat_khau_cu!: string
+
+  @IsNotEmpty({ message: 'Bạn chưa nhập mật khẩu mới' })
+  @MinLength(8, { message: 'Mật khẩu phải trên 8 ký tự' })
+  @Matches(/[A-Z]/, { message: 'Mật khẩu phải có ít nhất 1 chữ in hoa' })
+  @Matches(/[!@#$%^&*(),.?":{}|<>]/, { message: 'Mật khẩu phải có ít nhất 1 ký tự đặc biệt' })
+  mat_khau_moi!: string;
+
+  @IsNotEmpty({message: "Bạn chưa nhập mật khẩu nhập lại"})
+  mat_khau_nhap_lai!: string
+}
