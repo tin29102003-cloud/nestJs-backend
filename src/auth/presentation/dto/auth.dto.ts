@@ -76,3 +76,26 @@ export class ChangePassDto{
   @IsNotEmpty({message: "Bạn chưa nhập mật khẩu nhập lại"})
   mat_khau_nhap_lai!: string
 }
+export class SetConversationPinDto{
+  @IsNotEmpty({message: "Bạn chưa  nhập mã pin mới"})
+  @MinLength(3,{message: "Mã pin không được dưới 4 ký tự"})
+  @IsNumberString({},{message: "Mã pin phải là số"})
+  ma_pin_moi!: string
+}
+export class  setUpTwoFactorDto{
+  @IsNotEmpty({message: "Bạn chưa nhập mật khẩu"})
+  @IsString()
+  mat_khau!: string
+}
+export class  TurnOnTwoFactorDto{
+  @IsNotEmpty({message: "Mã bảo vệ không được để trông"})
+  @IsNumberString({},{message: "Mã  bảo vệ phải là số"})
+  @MinLength(5, {message: "Mã pin không được dưới 4 ký tự"})
+  ma_bao_ve!: string
+}
+export class  VerifyTwoFactoryDto{
+  @IsNotEmpty({message: "Bạn chưa nhập otp"})
+  @IsNumberString({},{message: "Otp phải là số"})
+  @MinLength(5,{message: "mã otp phải trên 5 ký tự"})
+  otp!: string;
+}

@@ -20,7 +20,7 @@ export class TemplateService implements TemplateServiceInterface{
       // __dirname sẽ trỏ tới thư mục chứa file template.service.ts đang chạy
       // Ta đi vào thư mục 'templates' và tìm file .hbs
       const filePath = path.join(__dirname, 'templates', `${templateName}.hbs`);
-      console.log(filePath);
+      // console.log(filePath);
       // Đọc nội dung file
       const templateContent = fs.readFileSync(filePath, 'utf8');
 

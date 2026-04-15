@@ -1,9 +1,11 @@
 import { JwtPayload } from "jsonwebtoken";
 import { ResultVerifyEmail } from "./notification.constant";
-
+export const SECRET_TIME_2FA = 30;
+export const APP_NAME = "STMDTKADU";
 export type CookieName = 
     |'_atkn'
     | '_rtkn'
+    | '_usrE'
 export const AUTH_PROVIDER = {
     LOCAL: 'local',
     GOOGLE: 'google',
@@ -61,8 +63,9 @@ export enum ROLE {
     PUBLIC = 0,
     ADMIN = 1
 }
+
 export enum BOOLEAN{
-    true = 1,
+    true = 1 ,
     false = 0
 }
 export interface mailOptions {

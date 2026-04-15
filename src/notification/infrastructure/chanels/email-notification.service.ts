@@ -17,14 +17,14 @@ export class EmailNotificationService implements NotificationInterface{
             tls: {rejectUnauthorized: false}
         })
     }
-    async send(type: NotificationType, toWho: string, payload: Record<string, any>): Promise<boolean> {
+    async send(type: NotificationType, toWho: string, subject: string,payload: Record<string, any>): Promise<boolean> {
         try {
             const htmlContent = this.templateService.compileTemplate(type, payload);
             // console.log(verifyLink);
             const mailOption: mailOptions = {
 			from: `"Thương mại điện tử KADU" <${process.env.MAIL_USER}>`,
 			to: toWho,
-			subject: 'Thư xác định tài khoản của  tmdt  KADU',
+			subject: subject,
 			html: htmlContent
 		};
             await this.tranposter.sendMail(mailOption);

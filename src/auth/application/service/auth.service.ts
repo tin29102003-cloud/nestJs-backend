@@ -1,18 +1,21 @@
-import { BadRequestException, ConflictException, ForbiddenException, HttpException, HttpStatus, Inject, Injectable, Logger, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, HttpException, HttpStatus, Inject, Injectable, InternalServerErrorException, Logger, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import bcrypt from 'node_modules/bcryptjs';
 
 import type { StringValue } from "ms";
 import crypto from 'crypto';
-import {  AUTH_PROVIDER, AuthLoginResult, BOOLEAN, CustomJwtPayload, LOCK_DURATION, LOGIN_FAIL_MAX, OTP_EXPIRE, PERM_LOCK_MAX, RefreshJwtPayload, ROLE, SafeUserData, TempJwtPayLoad, TOKEN_EXPIRE_IN, VerifyRegiterResult } from 'src/common/constants/auth.constaint';
+import {  APP_NAME, AUTH_PROVIDER, AuthLoginResult, BOOLEAN, CustomJwtPayload, LOCK_DURATION, LOGIN_FAIL_MAX, OTP_EXPIRE, PERM_LOCK_MAX, RefreshJwtPayload, ROLE, SafeUserData, SECRET_TIME_2FA, TempJwtPayLoad, TOKEN_EXPIRE_IN, VerifyRegiterResult } from 'src/common/constants/auth.constaint';
 import { Notification_Interface, type NotificationInterface } from 'src/notification/domain/interface/notification.interface';
 import { ForgotPassPayload, LoginFastPayLoad, RegisterEmailpayLoad, ResultVerifyEmail, VerifyEmailPayload } from 'src/common/constants/notification.constant';
 import { UserService } from 'src/user/application/service/user.service';
 import { User } from 'src/user/domain/entities/user.entity';
 import { CrytoUlti } from 'src/config/ultis/crypto.util';
 import { JwtService, JwtSignOptions } from '@nestjs/jwt';
+import {generateSecret, generateURI, verify } from 'otplib';
+import qrcode from 'qrcode';
 @Injectable()
 export class AuthService {
 	private readonly logger = new Logger(AuthService.name);
+
 	constructor(
 		private readonly jwtService: JwtService,
 		private readonly userService: UserService,
@@ -27,7 +30,14 @@ export class AuthService {
 	private generateExpireTime(now,lockTime: number): Date{
 		return new Date(now.getTime() +  lockTime);
 	}
-	
+	// private errorHandle(error: unknown, logMessage: string, clientMesage: string ): never{
+	// 	if (error instanceof HttpException) {
+	// 		throw error; 
+	// 	}
+	// 	const err = error as Error;
+	// 	this.logger.error(`[CRITICAL] ${logMessage}: ${err.message}`, err.stack);
+    //   	throw new InternalServerErrorException(clientMesage);
+	// }
 	//hàm privaate sinh token
 	private async issueTokenPair(user: User){
 		const accessTokenPayLoad: CustomJwtPayload = {
@@ -65,6 +75,17 @@ export class AuthService {
 		return {token, refreshToken};
 	}
 	
+	private async createOtpAndUpdate(id_user: number,minNumber: number, maxNumber: number, saltNumber: number, currentTime: Date,){
+		const otp = crypto.randomInt(minNumber, maxNumber).toString();////min là 100000 và max là 999999
+		const salt = await bcrypt.genSalt(saltNumber);
+		const  otpHash = await bcrypt.hash(otp, salt);
+		const updateData: Partial<User> = {
+			otp : otpHash,
+			otp_expire: this.generateExpireTime(currentTime,TOKEN_EXPIRE_IN)
+		}
+		await this.userService.UpdateUser({id: id_user}, updateData);
+		return otp;
+	}
 
 	private async handleLoginFail(user: User) {
 		const now = new Date();
@@ -107,7 +128,24 @@ export class AuthService {
 			throw  new HttpException("Tài khoản của bạn đã bị khóa do đăng nhập sai quá nhiều lần, vui thử lại sau ít phút",423);
 		}
 	}
-
+	
+	private async checkUserAndVerifyTwoFactor(id_user: number, ma_bao_ve: string){
+		const currentUser = await this.userService.FindFirstBy({id: id_user});
+		if(!currentUser || currentUser.provider !== AUTH_PROVIDER.LOCAL || !currentUser.mat_khau){
+			throw new NotFoundException("Tài khoản không tồn tại hoặc đăng ký bằng facebook và google nên không dùng đc chức năng  này");
+		}
+		if(currentUser.is_2fa_enable){
+			throw  new BadRequestException("Tài khoản của bạn đã bậc chức năng xác thực 2 bước");
+		}
+		if(!currentUser.two_fa_secret){
+			throw new BadRequestException("Bạn chưa  quét mã QR, vui lòng thực hiên bước cài đặt 2 bước trước");
+		}
+		const secret = CrytoUlti.decrypt(currentUser.two_fa_secret);
+		const isValid = await verify({token: ma_bao_ve, secret: secret, epochTolerance: SECRET_TIME_2FA});
+		if(!isValid.valid){
+			throw  new BadRequestException("Mã xác thực không chính xác hoặc đã hết hạn, nếu bạn chưa quét qr vui lòng quét lại mã qr để đăng  ký lại");
+		}
+	}
    
 	async LoginService(tai_khoan: string, mat_khau: string,
 		extraTrack?: (user: User)=> void//tao ra hàm kiem tra điều kiên thêm
@@ -197,7 +235,7 @@ export class AuthService {
 			tai_khoan: tai_khoan,
 			verifyLink: verifyLink
 		}
-		this.notificationServiceSend.send('regiter_email', email, payload);
+		this.notificationServiceSend.send('regiter_email', email, "Thư xác định tài khoản của  tmdt  KADU",payload);
 		// const noi
 	}
 	async VerifyService(email?: string, token?: string): Promise<VerifyRegiterResult>{
@@ -245,7 +283,7 @@ export class AuthService {
 			tai_khoan: user.tai_khoan,
 			verifyLink: verifyLink
 		};
-		this.notificationServiceSend.send('regiter_email', email, payload);
+		this.notificationServiceSend.send('regiter_email', email,"Thư xác định tài khoản của  tmdt  KADU", payload);
 	}
 	async forgotPassService(email: string){
 		const user = await this.userService.FindFirstBy({email: email});
@@ -268,19 +306,13 @@ export class AuthService {
 				message: "Đã gửi mã OTP qua gmail, vui lòng kiểm tra mail để thực hiện việc đổi mật khẩu"
 			}
 		}
-		const otp = crypto.randomInt(10_000, 100_000).toString();////min là 100000 và max là 999999
-		const salt = await bcrypt.genSalt(10);
-		const  otpHash = await bcrypt.hash(otp, salt);
-		const updateData: Partial<User> = {
-			otp : otpHash,
-			otp_expire: this.generateExpireTime(now,TOKEN_EXPIRE_IN)
-		}
-		await this.userService.UpdateUser({id: user.id}, updateData);
+		const otp = await this.createOtpAndUpdate(user.id, 10_000, 100_000, 10, now);
+		
 		const payload: ForgotPassPayload = {
 			tai_khoan: user.tai_khoan,
 			otp: otp
 		}
-		this.notificationServiceSend.send('forget_pass_email', email, payload);
+		this.notificationServiceSend.send('forget_pass_email', "Mã OTP khôi phục mật khẩu",email, payload);
 		return {
 			message: "Đã gửi mã OTP qua gmail, vui lòng kiểm tra mail để thực hiện việc đổi mật khẩu"
 		}
@@ -400,7 +432,7 @@ export class AuthService {
 			tai_khoan: user.tai_khoan,
 			magicLink: magicLink
 		}
-		await this.notificationServiceSend.send('login_fast_email',email,payload);
+		await this.notificationServiceSend.send('login_fast_email',email,"Thư đăng nhập nhanh của sàn tmdt KADU ",payload);
 		return {
 			message: "Đã gửi link xác thực qua mail vui lòng kiểm tra mail để đăng nhập"
 		}
@@ -470,5 +502,121 @@ export class AuthService {
 		};
 		return {...token, user}
 	}
+	async setConversationPin(id_user: number,ma_pin_moi: string){
+	
+			const salt = await bcrypt.genSalt(10);
+			const hashedPin = await bcrypt.hash(ma_pin_moi, salt);
+			await this.userService.UpdateUser({id: id_user},{
+				message_protection_code: hashedPin
+			});
+	
 
+		
+	}
+	async setUpTwoFactor(id_user: number, mat_khau: string){
+
+			const currentUser = await this.userService.FindFirstBy({id: id_user});
+			if(!currentUser || currentUser.provider !== AUTH_PROVIDER.LOCAL || !currentUser.mat_khau){
+				throw new ForbiddenException("Tài khoản không tồn tại hoặc đăng ký bằng facebook và google nên không dùng đc chức năng  này");
+			}
+			const isMatch = await bcrypt.compare(mat_khau, currentUser.mat_khau);
+			if(!isMatch){
+				throw new ForbiddenException("Mật khẩu không chính xác");
+			}
+			if(currentUser.is_2fa_enable){
+				throw new BadRequestException("Tài khoản của bạn đã bật xác  thực 2 bước rồi");
+			}
+			const secret = generateSecret();
+			const encryptedSecret = CrytoUlti.encrypt(secret);
+			await this.userService.UpdateUser({id: id_user}, {
+				two_fa_secret: encryptedSecret
+			});
+			const userName = currentUser.email || currentUser.tai_khoan;
+			const otpPathUrl = generateURI({
+				secret: secret,
+				issuer: APP_NAME,
+				label: userName
+			});
+			const qrCodeDataUrl = await qrcode.toDataURL(otpPathUrl);
+			return {
+				ten_ma: `${APP_NAME}: ${userName}`,
+				qr_code: qrCodeDataUrl,
+				secret_text: secret
+			}
+	}
+	async turnOnTwoFactor(id_user: number, ma_bao_ve: string){
+		await this.checkUserAndVerifyTwoFactor(id_user, ma_bao_ve);
+		await this.userService.UpdateUser({id:id_user},{
+			is_2fa_enable: true
+		});
+	}
+	async turnOffTwoFactor(id_user: number, ma_bao_ve: string){
+		await this.checkUserAndVerifyTwoFactor(id_user, ma_bao_ve);
+		await this.userService.UpdateUser({id: id_user}, {
+			is_2fa_enable: false,
+			two_fa_secret: null
+		})
+	}
+	async disbleTwofactorByEmail(email: string){
+		const user = await this.userService.FindFirstBy({email: email});
+		if(!user){
+			this.logger.warn("Email không tồn tại");
+			return {
+				message: "Đã gửi mã OTP qua gmail, vui lòng kiểm tra mail để thực hiện việc xóa xác thực 2 bước"
+			}
+		}
+		if(user.provider !== AUTH_PROVIDER.LOCAL || !user.mat_khau){
+			this.logger.warn("Không thể xóa xác thực 2 bước  vì tài khoản đã đăng ký bằng facebook hoặc google");
+			return {
+				message: "Đã gửi mã OTP qua gmail, vui lòng kiểm tra mail để thực hiện việc xóa xác thực 2 bước"
+			}
+		}
+		const now = new Date();
+		if(!user.xac_thuc_email_luc || user.xac_thuc_email_luc > now){
+			this.logger.warn("Email chưa được xác thực hoặc thời hạn không chính xác");
+			return {
+				message: "Đã gửi mã OTP qua gmail, vui lòng kiểm tra mail để thực hiện việc xóa xác thực 2 bước"
+			}
+		}
+		if(!user.is_2fa_enable || !user.two_fa_secret){
+			this.logger.warn("Không thể đổi xóa xác thực 2 bước vì tài khoản chưa đăng ký xác thực 2 bước");
+			return {
+				message: "Đã gửi mã OTP qua gmail, vui lòng kiểm tra mail để thực hiện việc xóa xác thực 2 bước"
+			}
+		}
+		const otp = await this.createOtpAndUpdate(user.id, 10_000, 100_000, 10, now);
+		const payload: ForgotPassPayload = {
+			tai_khoan: user.tai_khoan,
+			otp: otp
+		}
+		this.notificationServiceSend.send('forget_pass_email', "Mã OTP khôi phục mật khẩu",email, payload);
+		return {
+				message: "Đã gửi mã OTP qua gmail, vui lòng kiểm tra mail để thực hiện việc xóa xác thực 2 bước"
+		}
+	}	
+	async VerifyTwofactoryByEmail(otp: string, encryptEmail: string ){
+		const  email = CrytoUlti.decrypt(encryptEmail);
+		const user = await this.userService.FindFirstBy({email: email, provider: AUTH_PROVIDER.LOCAL});
+		if(!user){
+			throw new NotFoundException("Thông tin xác thực không chính xác");
+		}
+		if(!user.is_2fa_enable || !user.two_fa_secret){
+			throw  new BadRequestException("Tài khoản của bạn ko bật xác thực 2 bước nên ko thể xóa");
+		}
+		const now = new Date();
+		if(!user.otp_expire || user.otp_expire < now || !user.otp){
+			throw new BadRequestException("OTP đã hết hạn vui lòng gửi lại mã otp để tiến hành xóa xác thực 2 bước")
+		}
+		const isValid = await bcrypt.compare(otp, user.otp);
+		if(!isValid){
+			throw new BadRequestException("OTP không đúng vui lòng kiểm tra lại");
+		}
+		await this.userService.UpdateUser({id: user.id},{
+			otp: null,
+			otp_expire: null,
+			is_2fa_enable: false,
+			two_fa_secret: null
+		})
+		
+	}
 }

@@ -1,9 +1,9 @@
-import { Body, Controller, Get, Inject, Logger, Post, Query, Req, Res, SetMetadata, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Inject, Logger, Post, Put, Query, Req, Res, SetMetadata, UseGuards } from '@nestjs/common';
 import { type Request, type Response } from 'express';
 import { VerifyEmailPayload } from 'src/common/constants/notification.constant';
 import { TEMPLATE_INTERFACE, type TemplateServiceInterface } from 'src/notification/domain/interface/template.inteface';
 import { AuthService } from 'src/auth/application/service/auth.service';
-import { ChangePassDto, LoginDto, OtpChangePassDto, RegisterDto, ResendVerifyRegisterDto, VerifyRegisterDto } from '../dto/auth.dto';
+import { ChangePassDto, LoginDto, OtpChangePassDto, RegisterDto, ResendVerifyRegisterDto, SetConversationPinDto, setUpTwoFactorDto, TurnOnTwoFactorDto, VerifyRegisterDto, VerifyTwoFactoryDto } from '../dto/auth.dto';
 import { Throttle, ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AUTH_THROTTLE } from 'src/config/throttler.config';
 import { CrytoUlti } from 'src/config/ultis/crypto.util';
@@ -15,7 +15,7 @@ import { RefreshAuthGuard } from 'src/common/guards/refresh-auth.guard';
 export class AuthController {
 	private readonly logger = new Logger(AuthController.name);
 	private readonly deploy: boolean =  process.env.NODE_ENV === 'production'
-	private readonly HOME_URL: string = process.env.LOGIN_URL ?? "http://phimmoi.com";
+	private readonly HOME_URL: string = process.env.BASE_URL ?? "http://phimmoi.com";
 	constructor(
 		private readonly authService: AuthService,	
 		@Inject(TEMPLATE_INTERFACE)
@@ -29,36 +29,26 @@ export class AuthController {
 			path: '/',
 		})
 	}
+	private creatCookie(res: Response,cookieName: CookieName, cookiePayload: string, maxAge: string | number){
+		res.cookie(cookieName, cookiePayload,{
+			httpOnly: true,
+			secure: this.deploy ? true : false,//deploy thatja thi mo len
+			path: '/',
+			sameSite: this.deploy ? 'strict' : 'lax',
+			maxAge: maxAge as number, 
+		})
+	}
 	private setAuthCookie(res: Response,token: string, refreshToken: string){
 		 const cookieMaxAge = process.env.COOKIE_ACCESS_MAX_AGE || 15 * 60 * 1_000;
 			const cookieMaxAgeRefresh = process.env.COOKIE_REFRESH_MAX_AGE || 7 * 24 * 60 * 60 * 1_000;
-			res.cookie("_atkn",token,{
-				httpOnly: true,
-				secure: this.deploy ? true : false,//deploy thatja thi mo len
-				path: '/',
-				sameSite: this.deploy ? 'strict' : 'lax',
-				maxAge: cookieMaxAge as number, 
-			});
-
-			res.cookie("_rtkn",refreshToken,{
-				httpOnly: true,
-				secure: this.deploy ? true : false,//deploy thatja thi mo len
-				path: '/',
-				sameSite: this.deploy ? 'strict' : 'lax',
-				maxAge: cookieMaxAgeRefresh as number, 
-			});
+			this.creatCookie(res, "_atkn", token, cookieMaxAge)
+			this.creatCookie(res, "_rtkn", refreshToken, cookieMaxAgeRefresh);
 	}
 
 	private setEmailCookie(res: Response, email: string){
 		const encryptedEmail = CrytoUlti.encrypt(email);
 		const cookieEmailMaxAge = process.env.COOKIE_EMAIL_MAX_AGE ?? 5 * 60 *1000;
-		res.cookie("_userE", encryptedEmail,{
-			httpOnly: true,
-			secure: this.deploy ? true: false,
-			path: '/',
-			sameSite: this.deploy ? 'strict' : 'lax',
-			maxAge: cookieEmailMaxAge as number
-		})
+		this.creatCookie(res,'_usrE', encryptedEmail, cookieEmailMaxAge )
 	}
 
 	@Post('dang-nhap')
@@ -220,7 +210,7 @@ export class AuthController {
 		@Res({passthrough: true}) res: Response
 	){
 		const encryptEmail = req.cookies._userE as string;
-		console.log()
+		
 		await this.authService.VerifyOtpForgotPass(body.otp, body.mat_khau_moi, body.mat_khau_nhap_lai, encryptEmail);
 		res.clearCookie('_userE',{
 			httpOnly: true,
@@ -297,10 +287,10 @@ export class AuthController {
 	@Post('logout')
 	async logOut(
 		@Req() req: Request,
-		@Res() res: Response
+		@Res({passthrough: true}) res: Response
 	){
 		const payload = req['user'] as AuthUser;
-
+		await this.authService.logoutAccount(payload.id);
 		this.CleanCookie('_atkn',res);
 		this.CleanCookie('_rtkn',res);
 		return {
@@ -313,7 +303,8 @@ export class AuthController {
 	@Post('refresh-token')
 	async RefreshToken(
 		@Req() req: Request,
-		@Res() res: Response
+	
+		@Res({passthrough: true}) res: Response
 	){
 		const payload = req['refresh-payload'] as RefreshJwtPayload;
 		const refreshToken: string = req['refresh-token'];
@@ -326,6 +317,100 @@ export class AuthController {
 		}
 
 	}
+//api cài mã pin hội thoại
+	@UseGuards(JwtAuthGuard)
+	@Put('update-pin')
+	async setConversationPin(
+		@Req() req: Request,
+		@Body() body: SetConversationPinDto,
+		
+	){
+		const  payload = req['user'] as AuthUser;
+		await this.authService.setConversationPin(payload.id, body.ma_pin_moi);
+		return {
+			success: true,
+			message: "Đã thiết lập mã pin bảo vệ thành công",
+		}
+	}
+
+	@UseGuards(JwtAuthGuard)
+	@Post('2fa/setup')
+	async setUptwoFactor(
+		@Req() req: Request,
+		@Body() body: setUpTwoFactorDto,
+	){
+		const userPayload = req['user'] as AuthUser;
+		const result = await this.authService.setUpTwoFactor(userPayload.id, body.mat_khau);
+		return {
+			success: true,
+			message: "Tạo mã đăng ký 2 FA thành công!",
+			data: {
+				ten_ma: result.ten_ma,
+				qr_code: result.qr_code,
+				secret_text: result.secret_text
+			}
+		}
+	}
+	@UseGuards(JwtAuthGuard)
+	@Post('2fa/turn-on')
+	async turnOntwoFactor(
+		@Req() req: Request,
+		@Body() body: TurnOnTwoFactorDto
+	){
+		const userPayload = req['user'] as AuthUser;
+		await this.authService.turnOnTwoFactor(userPayload.id, body.ma_bao_ve);
+		return {
+			success: true,
+			message: "Bạn đã bật tính năng  bảo mật 2 lớp thành công",
+		}
+	}
+	@UseGuards(JwtAuthGuard)
+	@Post('2fa/turn-off')
+	async turnOffTwoFactor(
+		@Req() req: Request,
+		@Body() body: TurnOnTwoFactorDto,
+
+	){
+		const userpayload = req['user'] as AuthUser;
+		await this.authService.turnOffTwoFactor(userpayload.id, body.ma_bao_ve);
+		return {
+			success: true,
+			message: "Đã tắt tính năng xác thực  bước thành công, bạn nhớ xóa trên app google auth nữa nhá"
+		}
+	}
+
+	@UseGuards(ThrottlerModule)
+	@Throttle({default: AUTH_THROTTLE.DISABLE_2FA_EMAIL})
+	@Post('2fa/disable/email')
+	async turnOffTwoFactorByMail(
+		@Body() body: ResendVerifyRegisterDto,
+		@Res({passthrough: true}) res: Response
+	){
+		this.setEmailCookie(res, body.email);
+		const result = await this.authService.disbleTwofactorByEmail(body.email);
+		return {
+			success: true,
+			message: result.message
+		}
+	}
+
+	@UseGuards(ThrottlerModule)
+	@Throttle({default: AUTH_THROTTLE.VERIFY_2FA_EMAIL})
+	@Post("2fa/disable/email/verify")
+	async VerifyTwoFactorByEmail(
+		@Req() req: Request,
+		@Body() body: VerifyTwoFactoryDto,
+		@Res() res: Response
+	){
+		const encryptEmail = req.cookies._userE as string;
+		await this.authService.VerifyTwofactoryByEmail(body.otp, encryptEmail);
+		this.CleanCookie('_usrE',res);
+		return {
+			success: true,
+			message:"Tắt xác thực 2 bước thành công"
+		}
+	}
+
 	
 
 	
