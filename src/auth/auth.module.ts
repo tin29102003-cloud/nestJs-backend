@@ -6,16 +6,18 @@ import { AuthController } from './presentation/controllers/auth.controller';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { JwtModule } from '@nestjs/jwt';
 import { UserModule } from 'src/user/user.module';
+import { PassportModule } from '@nestjs/passport';
+import { FacebookStrategy } from './strategies/facebook.strategy';
 
 @Module({
   imports: [UserModule, NotificationModule,
     JwtModule.register({
       secret: 'abc',
       signOptions: {expiresIn: '1d'}//day laf truong hopwj coookie neu ko  co option se cai nay
-    })
+    }),PassportModule.register({session: false})
   ],//nho import module can dung vaof
   controllers: [AuthController],
-  providers: [AuthService, JwtAuthGuard],
+  providers: [AuthService, JwtAuthGuard,FacebookStrategy],
   exports: [JwtAuthGuard]
 })
 export class AuthModule {}

@@ -2,6 +2,8 @@ import { JwtPayload } from "jsonwebtoken";
 import { ResultVerifyEmail } from "./notification.constant";
 export const SECRET_TIME_2FA = 30;
 export const APP_NAME = "STMDTKADU";
+export const GOOGLE_CALLBACK_PATH = '/api/auth/google/callback'
+export const FACEBOOK_CALLBACK_PATH =`/api/auth/facebook/callback`
 export type CookieName = 
     |'_atkn'
     | '_rtkn'
@@ -80,4 +82,17 @@ export interface AuthUser {
     vai_tro: number;
     ho_ten: string | null;
     token_version: string | number;
+}
+export interface OAuthProfile {
+  id: string;
+  email?: {value: string}[];
+  displayName: string;
+  photos?: { value: string }[];
+}
+export interface dataToSendLogin{
+    success: boolean;
+    jsonData: string;
+    message?: string;
+    clientUrl: string;
+    source: 'facebook-auth' | 'google-auth';//key để fe nó nhận diện là dữ lieuj trả về của login google hoặc faceboook
 }

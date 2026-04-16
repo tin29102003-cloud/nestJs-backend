@@ -3,7 +3,7 @@ import bcrypt from 'node_modules/bcryptjs';
 
 import type { StringValue } from "ms";
 import crypto from 'crypto';
-import {  APP_NAME, AUTH_PROVIDER, AuthLoginResult, BOOLEAN, CustomJwtPayload, LOCK_DURATION, LOGIN_FAIL_MAX, OTP_EXPIRE, PERM_LOCK_MAX, RefreshJwtPayload, ROLE, SafeUserData, SECRET_TIME_2FA, TempJwtPayLoad, TOKEN_EXPIRE_IN, VerifyRegiterResult } from 'src/common/constants/auth.constaint';
+import {  APP_NAME, AUTH_PROVIDER, AuthLoginResult, BOOLEAN, CustomJwtPayload, LOCK_DURATION, LOGIN_FAIL_MAX, OAuthProfile, OTP_EXPIRE, PERM_LOCK_MAX, RefreshJwtPayload, ROLE, SafeUserData, SECRET_TIME_2FA, TempJwtPayLoad, TOKEN_EXPIRE_IN, VerifyRegiterResult } from 'src/common/constants/auth.constaint';
 import { Notification_Interface, type NotificationInterface } from 'src/notification/domain/interface/notification.interface';
 import { ForgotPassPayload, LoginFastPayLoad, RegisterEmailpayLoad, ResultVerifyEmail, VerifyEmailPayload } from 'src/common/constants/notification.constant';
 import { UserService } from 'src/user/application/service/user.service';
@@ -27,6 +27,27 @@ export class AuthService {
 	private generateToken(byte: number): string{
 		return crypto.randomBytes(byte).toString('hex');
 	}
+	// private async hasUserAndTwoFactor(options: {email?: string, id?: number}){
+	// 	const where: Partial<User> = {
+	// 		provider: AUTH_PROVIDER.LOCAL,
+	// 	};
+
+	// 	if (options.id) {
+	// 		where.id = options.id;
+	// 	}
+
+	// 	if (options.email) {
+	// 		where.email = options.email;
+	// 	}
+
+	// 	const user = await this.userService.FindFirstBy(where);
+
+	// 	if (!user) {
+	// 		throw new NotFoundException("Thông tin xác thực không chính xác");
+	// 	}
+		
+	// 	return user;
+	// }
 	private generateExpireTime(now,lockTime: number): Date{
 		return new Date(now.getTime() +  lockTime);
 	}
@@ -39,7 +60,14 @@ export class AuthService {
     //   	throw new InternalServerErrorException(clientMesage);
 	// }
 	//hàm privaate sinh token
-	private async issueTokenPair(user: User){
+	public  safeDataToSend(data: object){
+		return JSON.stringify(data)
+			.replace(/</g, '\\u003c')
+			.replace(/>/g, '\\u003e')
+			.replace(/&/g, '\\u0026')
+			.replace(/'/g, '\\u0027');
+	}
+	public async issueTokenPair(user: User){
 		const accessTokenPayLoad: CustomJwtPayload = {
 			id: user.id, tai_khoan: user.tai_khoan, vai_tro: user.vai_tro, ho_ten: user.ho_ten, token_version: user.token_version
 		}
@@ -146,7 +174,23 @@ export class AuthService {
 			throw  new BadRequestException("Mã xác thực không chính xác hoặc đã hết hạn, nếu bạn chưa quét qr vui lòng quét lại mã qr để đăng  ký lại");
 		}
 	}
+
+	private createSafeUser(username: string){
+		return  username
+		.toLowerCase()
+		.replace(/[^a-z0-9]/g, '')
+		.substring(0,10);
+	}
    
+	private generateRandomString(length: number): string {
+		const characters = 'abcdefghijklmnopqrstuvwxyz0123456789';
+		let result = '';	
+		const charactersLength = characters.length;	
+		for(let i = 0; i < length; i++) {
+			result += characters.charAt(Math.floor(Math.random() * charactersLength));
+		}
+		return result;
+	}
 	async LoginService(tai_khoan: string, mat_khau: string,
 		extraTrack?: (user: User)=> void//tao ra hàm kiem tra điều kiên thêm
 	): Promise<AuthLoginResult>{
@@ -497,9 +541,7 @@ export class AuthService {
 			throw new UnauthorizedException("Refresh token không hợp lệ")
 		}
 		const token = await this.issueTokenPair(user);
-		const safeUserData: SafeUserData = {
-			ho_ten: user.ho_ten, tai_khoan: user.tai_khoan, vai_tro: user.vai_tro, email: user.email, is_shop: user.is_shop, hinh: user.hinh
-		};
+		
 		return {...token, user}
 	}
 	async setConversationPin(id_user: number,ma_pin_moi: string){
@@ -618,5 +660,88 @@ export class AuthService {
 			two_fa_secret: null
 		})
 		
+	}
+	async VerifyTwoFactor(id_user: number, ma_bao_ve: string){
+		const currentUser = await this.userService.FindFirstBy({id: id_user});
+		if(!currentUser ){
+			throw new NotFoundException("Dữ liệu 2FA không hợp lệ")
+		}
+		if(!currentUser.is_2fa_enable || !currentUser.two_fa_secret){
+			throw  new BadRequestException("Tài khoản của bạn ko bật xác thực 2 bước nên ko thể xóa");
+		}
+		const secret = CrytoUlti.decrypt(currentUser.two_fa_secret);
+		const isValid = await verify({
+			token: ma_bao_ve, secret: secret, epochTolerance: SECRET_TIME_2FA
+		})
+		if(!isValid.valid){
+			throw new BadRequestException("Mã xác thực không chính xác");
+		}
+		await this.issueTokenPair(currentUser);
+		const tokens = await this.issueTokenPair(currentUser); 
+			const safeUserData: SafeUserData = {
+				ho_ten: currentUser.ho_ten, tai_khoan: currentUser.tai_khoan, vai_tro: currentUser.vai_tro, email: currentUser.email, is_shop: currentUser.is_shop, hinh: currentUser.hinh
+			};
+			return {require_2fa: true, ...tokens, user: safeUserData}
+	}
+	async validateOAuthUser(profile: OAuthProfile, provider: string){
+		
+		const providerId = profile.id
+		const email = profile.email?.[0]?.value.toLowerCase();
+		const name = profile.displayName;
+		const hinh = profile.photos?.[0]?.value;
+		if(!providerId){
+			throw new HttpException("Không thể xác thực tài khoản vì id không được cung cấp từ nhà cung cấp OAuth", HttpStatus.BAD_REQUEST);
+		}
+		if(!email){
+			throw new HttpException("Không thể xác thực tài khoản vì email không được cung cấp từ nhà cung cấp OAuth", HttpStatus.BAD_REQUEST);
+		}
+		let user = await this.userService.FindFirstBy({provider_id: providerId, provider: provider});
+		
+		if(user){
+			if(user.khoa === BOOLEAN.true){
+				throw new HttpException("Tài khoản đã bị khóa vui lòng liên hệ với ban quản trị viên để được hỗ trợ", HttpStatus.LOCKED);
+			}
+			return user;
+		}
+		user = await this.userService.FindFirstBy({email: email});
+		if(user){
+			if(user.khoa === BOOLEAN.true){
+				throw new HttpException("Tài khoản đã bị khóa vui lòng liên hệ với ban quản trị viên để được hỗ trợ", HttpStatus.LOCKED);
+			}
+			if(user.provider !== AUTH_PROVIDER.LOCAL){
+				throw new HttpException("Tài khoản đã tồn tại với email này nhưng được tạo bởi nhà cung cấp OAuth khác", HttpStatus.CONFLICT);
+			}
+			user.provider_id = providerId;
+			await this.userService.UpdateUser({id: user.id}, {provider_id: providerId});
+			return user;
+		}
+		let rawUserName = email.split('@')[0] || 'user';
+		const safeusername = this.createSafeUser(rawUserName);
+		let newAccount: string | undefined;
+		let suffixLength = 6;
+		for(let i = 0; i < 5; i++){
+			const randomSuffix = this.generateRandomString(suffixLength);
+			newAccount = `${safeusername}${randomSuffix}`;
+			const existingUser = await this.userService.FindFirstBy({tai_khoan: newAccount});
+			if(!existingUser){
+				break;
+			}
+		}
+		if(!newAccount){
+			throw new HttpException("Không thể tạo tài khoản người dùng mới do trùng tên tài khoản", HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+		const newUser = await this.userService.createUser({
+			provider_id: providerId,
+			provider: provider,
+			email: email,
+			tai_khoan: newAccount,
+			ho_ten: name,
+			hinh: hinh,
+			xac_thuc_email_luc: new Date()
+		})
+		if(!newUser){
+			throw new HttpException("Không thể tạo tài khoản người dùng mới", HttpStatus.INTERNAL_SERVER_ERROR);
+		}
+		return newUser;
 	}
 }

@@ -8,5 +8,7 @@ export const AUTH_THROTTLE = {
   LOGIN_FAST: {limit: 2, ttl: 5 * 60 * 1_000},
   VERIFY_LOGIN_FAST: {limit: 10, ttl: 10 * 60 * 1_000},
   DISABLE_2FA_EMAIL: {limit: 1, ttl: 5 * 60 * 1_000},
-  VERIFY_2FA_EMAIL: {limit: 10, ttl: 5 * 60 * 1_000}
+  VERIFY_2FA_EMAIL: {limit: 10, ttl: 5 * 60 * 1_000},
+  VERIFY_2FA: {limit: 2, ttl: 1 * 60 * 1_000},
+  OAuth2_LOGIN: {limit: 5, ttl: 60 * 1_000}
 };

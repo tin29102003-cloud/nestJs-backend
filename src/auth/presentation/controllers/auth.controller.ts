@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Inject, Logger, Post, Put, Query, Req, Res, SetMetadata, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Inject, Logger, Post, Put, Query, Req, Res, SetMetadata, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { type Request, type Response } from 'express';
 import { VerifyEmailPayload } from 'src/common/constants/notification.constant';
 import { TEMPLATE_INTERFACE, type TemplateServiceInterface } from 'src/notification/domain/interface/template.inteface';
@@ -8,8 +8,11 @@ import { Throttle, ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AUTH_THROTTLE } from 'src/config/throttler.config';
 import { CrytoUlti } from 'src/config/ultis/crypto.util';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
-import { AuthUser, CookieName, RefreshJwtPayload } from 'src/common/constants/auth.constaint';
+import { AuthUser, CookieName, dataToSendLogin, RefreshJwtPayload, SafeUserData } from 'src/common/constants/auth.constaint';
 import { RefreshAuthGuard } from 'src/common/guards/refresh-auth.guard';
+import { CheckTempToken } from 'src/common/guards/temp.gaurd';
+import { User } from 'src/user/domain/entities/user.entity';
+import { FacebookAuthGuard } from 'src/common/guards/facebook-auth.guard';
 
 @Controller('api/auth')
 export class AuthController {
@@ -411,8 +414,79 @@ export class AuthController {
 		}
 	}
 
-	
+	@UseGuards(ThrottlerModule, CheckTempToken)
+	@Throttle({default: AUTH_THROTTLE.VERIFY_2FA})
+	@Post('2fa/verification')
+	async VerifyTwoFactor(
+		@Req() req: Request,
+		@Body() body: TurnOnTwoFactorDto,
+		@Res({passthrough: true}) res: Response
+	){
 
-	
+		const userPayload = req['user'] as  AuthUser;
+		const result = await this.authService.VerifyTwoFactor(userPayload.id, body.ma_bao_ve)
+		this.setAuthCookie(res,result.token,result.refreshToken);
+		
+		return {
+			message: "Đăng nhập thành công",
+			token: result.token,
+			user: result.user,
+			success: true
 
+		}
+	}
+
+	@Get('facebook')
+	@UseGuards(FacebookAuthGuard)
+	async facebookAuth(){
+		//được chuyển hướng đến facebook để xác thực
+	}
+	@Get('facebook/callback')
+	@UseGuards(ThrottlerGuard,FacebookAuthGuard)
+	@Throttle({default: AUTH_THROTTLE.OAuth2_LOGIN})
+	async facebookAuthRedirect(
+		@Req() req: Request,
+		@Res() res: Response
+	){
+		try {
+			if (!req.user) {
+				throw new UnauthorizedException('Không tìm thấy thông tin người dùng');
+			}
+			const user = req.user as User;
+			const tokens = await  this.authService.issueTokenPair(user);
+			this.setAuthCookie(res, tokens.token, tokens.refreshToken);
+			const safeUserData : SafeUserData = {
+				ho_ten: user.ho_ten, tai_khoan: user.tai_khoan, email: user.email, vai_tro: user.vai_tro, is_shop: user.is_shop, hinh:user.hinh
+			}
+			const safeData = this.authService.safeDataToSend(safeUserData);
+			const dataTosend: dataToSendLogin = {
+				success: true,
+				message: "Đăng nhập bằng Facebook thành công",
+				jsonData: safeData,
+				clientUrl: this.HOME_URL,
+				source: 'facebook-auth',
+			}
+			
+			const html = this.templateService.compileTemplate('popup_login', dataTosend);
+			return res.status(200).send(html);
+		} catch (err) {
+			const error = err as Error;
+			this.logger.error(`[CRITICAL] Lỗi API callback Facebook: ${error.message}`, error.stack);
+
+            const errorData: dataToSendLogin = {
+				success: false,
+                message: "Lỗi hệ thống khi đăng nhập Facebook. Vui lòng thử lại.",
+                jsonData: JSON.stringify({ success: false }),
+                source: 'facebook-auth',
+                clientUrl: this.HOME_URL
+            };
+            
+            const errorHtml = this.templateService.compileTemplate('popup_login', errorData);
+            return res.status(401).send(errorHtml);
+		}
+			
+		
+		
+
+	}
 }

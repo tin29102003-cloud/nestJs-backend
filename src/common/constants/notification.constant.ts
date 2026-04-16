@@ -3,6 +3,7 @@ export type NotificationType =
   | 'verify_email'
   | 'forget_pass_email'
   | 'login_fast_email'
+  | 'popup_login'
 export interface RegisterEmailpayLoad{
   tai_khoan: string,
   verifyLink: string
