@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, ForbiddenException, HttpException, HttpStatus, Inject, Injectable, InternalServerErrorException, Logger, NotFoundException, UnauthorizedException } from '@nestjs/common';
-import bcrypt from 'node_modules/bcryptjs';
+import bcrypt from 'bcryptjs';
 
 import type { StringValue } from "ms";
 import crypto from 'crypto';
@@ -60,13 +60,7 @@ export class AuthService {
     //   	throw new InternalServerErrorException(clientMesage);
 	// }
 	//hàm privaate sinh token
-	public  safeDataToSend(data: object){
-		return JSON.stringify(data)
-			.replace(/</g, '\\u003c')
-			.replace(/>/g, '\\u003e')
-			.replace(/&/g, '\\u0026')
-			.replace(/'/g, '\\u0027');
-	}
+	
 	public async issueTokenPair(user: User){
 		const accessTokenPayLoad: CustomJwtPayload = {
 			id: user.id, tai_khoan: user.tai_khoan, vai_tro: user.vai_tro, ho_ten: user.ho_ten, token_version: user.token_version
@@ -194,7 +188,7 @@ export class AuthService {
 	async LoginService(tai_khoan: string, mat_khau: string,
 		extraTrack?: (user: User)=> void//tao ra hàm kiem tra điều kiên thêm
 	): Promise<AuthLoginResult>{
-		const user = await this.userService.FindFirstByOr([{tai_khoan: tai_khoan}, {email: tai_khoan}]);
+		const user = await this.userService.FindFirstByOrWithProvider([{tai_khoan: tai_khoan}, {email: tai_khoan}]);
 		if(!user){
 			throw new  UnauthorizedException("email hoặc tài khoản không tồn tại");
 		}
@@ -249,7 +243,7 @@ export class AuthService {
 		
 	}
 	async RegisterService(tai_khoan: string, email: string, mat_khau: string, mat_khau_nhap_lai: string, dien_thoai: string){
-		const existingUser = await this.userService.FindFirstByOr([{tai_khoan},{email}]);
+		const existingUser = await this.userService.FindFirstByOr([{email: email},{tai_khoan: tai_khoan}]);
 		if(existingUser){
 			if(existingUser.tai_khoan === tai_khoan){
 				throw new ConflictException("Tài khoản đã tồn tại , vui lòng nhập tài khoản khác");
@@ -307,7 +301,7 @@ export class AuthService {
 		}
 	}
 	async resendRegistrationService(email: string){
-		const user = await this.userService.FindFirstByOr([{tai_khoan: email}, {email: email}]);
+		const user = await this.userService.FindFirstByOrWithProvider([{tai_khoan: email}, {email: email}]);
 		const now = new Date();
 		if(!user){
 			throw new UnauthorizedException("Nếu email này tồn tại, một thư xác thực sẽ được gửi");
@@ -356,7 +350,7 @@ export class AuthService {
 			tai_khoan: user.tai_khoan,
 			otp: otp
 		}
-		this.notificationServiceSend.send('forget_pass_email', "Mã OTP khôi phục mật khẩu",email, payload);
+		this.notificationServiceSend.send('forget_pass_email',email, "Mã OTP khôi phục mật khẩu",payload);
 		return {
 			message: "Đã gửi mã OTP qua gmail, vui lòng kiểm tra mail để thực hiện việc đổi mật khẩu"
 		}
@@ -367,7 +361,7 @@ export class AuthService {
 		}
 		const email = CrytoUlti.decrypt(cookie)
 		
-		console.log(email);
+		// console.log(email);
 		if(!email){
 			throw new NotFoundException("Không thể xác định người dùng từ phiên làm việc");
 		}
@@ -631,7 +625,7 @@ export class AuthService {
 			tai_khoan: user.tai_khoan,
 			otp: otp
 		}
-		this.notificationServiceSend.send('forget_pass_email', "Mã OTP khôi phục mật khẩu",email, payload);
+		this.notificationServiceSend.send('forget_pass_email',email,"Mã OTP khôi phục mật khẩu" ,payload);
 		return {
 				message: "Đã gửi mã OTP qua gmail, vui lòng kiểm tra mail để thực hiện việc xóa xác thực 2 bước"
 		}
@@ -686,9 +680,10 @@ export class AuthService {
 	async validateOAuthUser(profile: OAuthProfile, provider: string){
 		
 		const providerId = profile.id
-		const email = profile.email?.[0]?.value.toLowerCase();
+		const email = profile.emails?.[0]?.value.toLowerCase();
 		const name = profile.displayName;
 		const hinh = profile.photos?.[0]?.value;
+		
 		if(!providerId){
 			throw new HttpException("Không thể xác thực tài khoản vì id không được cung cấp từ nhà cung cấp OAuth", HttpStatus.BAD_REQUEST);
 		}
@@ -711,8 +706,13 @@ export class AuthService {
 			if(user.provider !== AUTH_PROVIDER.LOCAL){
 				throw new HttpException("Tài khoản đã tồn tại với email này nhưng được tạo bởi nhà cung cấp OAuth khác", HttpStatus.CONFLICT);
 			}
-			user.provider_id = providerId;
-			await this.userService.UpdateUser({id: user.id}, {provider_id: providerId});
+			if(user.provider_id && user.provider_id !== providerId){
+				throw new HttpException("Tài khoản đã tồn tại với email này và đã liên kết với nhà cung cấp OAuth khác", HttpStatus.CONFLICT);
+			}
+			
+			await this.userService.UpdateUser({id: user.id}, {
+				provider_id: providerId
+			});
 			return user;
 		}
 		let rawUserName = email.split('@')[0] || 'user';

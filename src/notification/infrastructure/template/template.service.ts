@@ -9,7 +9,11 @@ import { TemplateServiceInterface } from 'src/notification/domain/interface/temp
 @Injectable()
 export class TemplateService implements TemplateServiceInterface{
   private readonly logger = new Logger(TemplateService.name);
-
+  constructor(){
+    handlebars.registerHelper('json', (context) => {
+      return JSON.stringify(context);
+    });//hàm này giúp chúng ta có thể truyền cả object vào template và sử dụng {{json data}} để in ra chuỗi JSON trong template, rất hữu ích khi cần truyền nhiều dữ liệu phức tạp vào template.
+  }
   /**
    * Đọc và biên dịch file .hbs thành chuỗi HTML
    * @param templateName Tên file template (không cần đuôi .hbs)

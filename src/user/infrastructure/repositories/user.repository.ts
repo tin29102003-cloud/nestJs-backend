@@ -15,11 +15,19 @@ export class UserRepository implements UserRepositoryIntereface{
         private ToEntity(model: UserModel){
             return new User(model.toJSON());
         }
-        async findUserByOr(condition: Partial<User>[]): Promise<User | null> {
+        async findUserByOrWithProvider(condition: Partial<User>[]): Promise<User | null> {
             const user =  await this.userModel.findOne({
                 where: {
                     [Op.or] : condition,
                     provider: AUTH_PROVIDER.LOCAL
+                }
+            })
+            return  user ? this.ToEntity(user): null//chuyeen usermodel thanh entity
+        }
+        async findUserByOr(condition: Partial<User>[]): Promise<User | null> {
+            const user =  await this.userModel.findOne({
+                where: {
+                    [Op.or] : condition
                 }
             })
             return  user ? this.ToEntity(user): null//chuyeen usermodel thanh entity

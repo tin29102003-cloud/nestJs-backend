@@ -6,22 +6,32 @@
 <body>
   <p>{{message}}</p>
 
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      if (window.opener) {
-        try {
-          const data = JSON.parse('{{jsonData}}');
-          window.opener.postMessage(data, '{{clientUrl}}');
-          
-        } catch (e) {
-          console.error('Parse error', e);
-        }
-        setTimeout(function() {
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  if (window.opener) {
+    try {
+
+      const data = {
+        success: {{success}},
+        message: "{{message}}",
+        jsonData: {{{json jsonData}}}
+      };
+
+      console.log('Received data:', data);
+
+      window.opener.postMessage(data, '{{clientUrl}}');
+
+    } catch (e) {
+      console.error('Parse error', e);
+    }
+
+    setTimeout(function() {
           window.close();
-        }, 3000);
-      }
-      
-    });
-  </script>
+        }, 10000);
+  }
+});
+</script>
+
 </body>
 </html>
+

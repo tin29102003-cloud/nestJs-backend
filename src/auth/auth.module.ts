@@ -8,6 +8,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { UserModule } from 'src/user/user.module';
 import { PassportModule } from '@nestjs/passport';
 import { FacebookStrategy } from './strategies/facebook.strategy';
+import { GoogleStrategy } from './strategies/google.strategy';
 
 @Module({
   imports: [UserModule, NotificationModule,
@@ -17,7 +18,7 @@ import { FacebookStrategy } from './strategies/facebook.strategy';
     }),PassportModule.register({session: false})
   ],//nho import module can dung vaof
   controllers: [AuthController],
-  providers: [AuthService, JwtAuthGuard,FacebookStrategy],
+  providers: [AuthService, JwtAuthGuard,FacebookStrategy,GoogleStrategy],//để jwtau vào để chỗ khác dùng
   exports: [JwtAuthGuard]
 })
 export class AuthModule {}

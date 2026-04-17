@@ -12,6 +12,9 @@ export class UserService {
     async FindFirstByOr(condition: Partial<User>[]): Promise<User | null>{
         return await this.userRepository.findUserByOr(condition);
     }
+    async FindFirstByOrWithProvider(condition: Partial<User>[]): Promise<User | null>{
+        return await this.userRepository.findUserByOrWithProvider(condition);
+     }
     async UpdateUser(condition: Partial<User>, data: Partial<User>): Promise<Boolean>{
         return await this.userRepository.UpdateUserBy(condition,data);
     }

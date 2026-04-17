@@ -13,6 +13,7 @@ import { RefreshAuthGuard } from 'src/common/guards/refresh-auth.guard';
 import { CheckTempToken } from 'src/common/guards/temp.gaurd';
 import { User } from 'src/user/domain/entities/user.entity';
 import { FacebookAuthGuard } from 'src/common/guards/facebook-auth.guard';
+import { GoogleAuthGuard } from 'src/common/guards/google-auth.guard';
 
 @Controller('api/auth')
 export class AuthController {
@@ -436,14 +437,16 @@ export class AuthController {
 		}
 	}
 
-	@Get('facebook')
+	
 	@UseGuards(FacebookAuthGuard)
+	@Get('facebook')
 	async facebookAuth(){
 		//được chuyển hướng đến facebook để xác thực
 	}
-	@Get('facebook/callback')
+	
 	@UseGuards(ThrottlerGuard,FacebookAuthGuard)
 	@Throttle({default: AUTH_THROTTLE.OAuth2_LOGIN})
+	@Get('facebook/callback')
 	async facebookAuthRedirect(
 		@Req() req: Request,
 		@Res() res: Response
@@ -458,11 +461,11 @@ export class AuthController {
 			const safeUserData : SafeUserData = {
 				ho_ten: user.ho_ten, tai_khoan: user.tai_khoan, email: user.email, vai_tro: user.vai_tro, is_shop: user.is_shop, hinh:user.hinh
 			}
-			const safeData = this.authService.safeDataToSend(safeUserData);
+			
 			const dataTosend: dataToSendLogin = {
 				success: true,
 				message: "Đăng nhập bằng Facebook thành công",
-				jsonData: safeData,
+				jsonData: safeUserData,
 				clientUrl: this.HOME_URL,
 				source: 'facebook-auth',
 			}
@@ -472,11 +475,10 @@ export class AuthController {
 		} catch (err) {
 			const error = err as Error;
 			this.logger.error(`[CRITICAL] Lỗi API callback Facebook: ${error.message}`, error.stack);
-
             const errorData: dataToSendLogin = {
 				success: false,
                 message: "Lỗi hệ thống khi đăng nhập Facebook. Vui lòng thử lại.",
-                jsonData: JSON.stringify({ success: false }),
+                jsonData: {error: error.message || 'facebook_auth_error'},
                 source: 'facebook-auth',
                 clientUrl: this.HOME_URL
             };
@@ -484,9 +486,56 @@ export class AuthController {
             const errorHtml = this.templateService.compileTemplate('popup_login', errorData);
             return res.status(401).send(errorHtml);
 		}
-			
-		
-		
+	}
+	@UseGuards(GoogleAuthGuard)
+	@Get('google')
+	async googleAuth(){
+		//được chuyển hướng đến google để xác thực
+	}
 
+	@UseGuards(ThrottlerGuard, GoogleAuthGuard)
+	@Throttle({default: AUTH_THROTTLE.OAuth2_LOGIN})
+	@Get('google/callback')
+	async googleAuthRedirect(
+		@Req() req: Request,
+		@Res() res: Response
+	){
+		try {
+			if(!req.user){
+				throw new UnauthorizedException('Không tìm thấy thông tin người dùng');	
+			}
+			const user = req.user as User;
+			// console.log("User sau khi xác thực Google:", user);
+			const tokens = await this.authService.issueTokenPair(user);
+			this.setAuthCookie(res, tokens.token, tokens.refreshToken);
+			const safeUserData : SafeUserData = {
+				ho_ten: user.ho_ten, tai_khoan: user.tai_khoan, email: user.email, vai_tro: user.vai_tro, is_shop: user.is_shop, hinh:user.hinh
+			}
+			const dataTosend: dataToSendLogin = {
+				success: true,
+				message: "Đăng nhập bằng Google thành công",
+				jsonData: safeUserData,
+				clientUrl: this.HOME_URL,
+				source: 'google-auth',
+				//process.env.TEST_URL ||
+			}
+			const html = this.templateService.compileTemplate('popup_login', dataTosend);
+			return res.status(200).send(html);
+			
+		} catch (err) {
+			const error = err as Error;
+			this.logger.error(`[CRITICAL] Lỗi API callback Google: ${error.message}`, error.stack);
+            const errorData: dataToSendLogin = {
+				success: false,
+                message: "Lỗi hệ thống khi đăng nhập Google. Vui lòng thử lại.",
+                jsonData: {error: error.message || 'google_auth_error'},
+                source: 'google-auth',
+                clientUrl:  this.HOME_URL
+				//process.env.TEST_URL ||
+            };
+            
+            const errorHtml = this.templateService.compileTemplate('popup_login', errorData);
+            return res.status(401).send(errorHtml);	
+		}
 	}
 }

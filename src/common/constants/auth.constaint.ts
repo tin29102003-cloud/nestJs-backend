@@ -85,13 +85,13 @@ export interface AuthUser {
 }
 export interface OAuthProfile {
   id: string;
-  email?: {value: string}[];
+  emails?: {value: string}[];
   displayName: string;
   photos?: { value: string }[];
 }
 export interface dataToSendLogin{
     success: boolean;
-    jsonData: string;
+    jsonData: object;
     message?: string;
     clientUrl: string;
     source: 'facebook-auth' | 'google-auth';//key để fe nó nhận diện là dữ lieuj trả về của login google hoặc faceboook
