@@ -13,12 +13,13 @@ import { GoogleStrategy } from './strategies/google.strategy';
 @Module({
   imports: [UserModule, NotificationModule,
     JwtModule.register({
+      global: true,
       secret: 'abc',
       signOptions: {expiresIn: '1d'}//day laf truong hopwj coookie neu ko  co option se cai nay
     }),PassportModule.register({session: false})
   ],//nho import module can dung vaof
   controllers: [AuthController],
   providers: [AuthService, JwtAuthGuard,FacebookStrategy,GoogleStrategy],//để jwtau vào để chỗ khác dùng
-  exports: [JwtAuthGuard]
+  exports: [JwtAuthGuard, AuthService]
 })
 export class AuthModule {}

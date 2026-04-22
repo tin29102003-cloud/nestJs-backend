@@ -1,10 +1,11 @@
 import { Injectable } from "@nestjs/common";
 import { UserRepositoryIntereface } from "../../domain/interface/user.repository.interface";
 import { InjectModel } from "@nestjs/sequelize";
-import { Op } from "sequelize";
+import { FindAttributeOptions, Op, Order } from "sequelize";
 import { AUTH_PROVIDER } from "src/common/constants/auth.constaint";
 import { UserModel } from "../model/user.model";
 import { User } from "src/user/domain/entities/user.entity";
+import { SortOderType } from "src/common/constants/user.constaint";
 
 
 @Injectable()// dánh dáu class này là provider  để neesst js có thể DI đc
@@ -61,6 +62,27 @@ export class UserRepository implements UserRepositoryIntereface{
                     token_expire: {[Op.gt]: time}
                 }
            });
-         return  user ? this.ToEntity(user): null
-       }  
+        return  user ? this.ToEntity(user): null
+        }  
+        async findAndCountUserBy(limit: number, offset: number, order?: [string, SortOderType][], attributes?: string[],condition?: Partial<User>): Promise<{ rows: User[]; count: number; }> {
+            const queryOptions: {
+                where: Partial<User>;
+                limit: number;
+                offset: number;
+                order?: Order;
+                attributes?: FindAttributeOptions;
+            } = {
+                where: condition ?? {},
+                limit: limit,
+                offset: offset
+            };
+            if(order &&  order.length > 0){
+                queryOptions.order = order;
+            }
+            if(attributes && attributes.length > 0){
+                queryOptions.attributes = attributes;
+            }
+            const { rows, count } = await this.userModel.findAndCountAll(queryOptions);
+        return { rows:  rows.map((row) => this.ToEntity(row)) , count };
+        }
 }

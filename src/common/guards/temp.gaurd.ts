@@ -1,16 +1,16 @@
-import { CanActivate, ExecutionContext, ForbiddenException, Logger, UnauthorizedException } from "@nestjs/common";
+import { CanActivate, ExecutionContext, ForbiddenException, Injectable, Logger, UnauthorizedException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { Observable } from "rxjs";
 import { UserService } from "src/user/application/service/user.service";
 import { TempJwtPayLoad } from "../constants/auth.constaint";
-
+@Injectable()
 export class CheckTempToken implements CanActivate{
 	private readonly logger = new Logger(CheckTempToken.name);
 	private readonly tempSecret = process.env.TEMP_JWT_SECRET || 'co_cai_nit'
 
 	constructor(
 		private readonly jwtService: JwtService,
-		private readonly userService: UserService
+		
 	){    }
     canActivate(context: ExecutionContext): boolean | Promise<boolean> | Observable<boolean> {
          	const req = context.switchToHttp().getRequest<Request>();
@@ -19,8 +19,10 @@ export class CheckTempToken implements CanActivate{
 			throw new  UnauthorizedException("Thiếu token xác thực 2 bước");
 		}
 		try {
+			
 			const payload = this.jwtService.verify(tempHeader, {secret: this.tempSecret}) as TempJwtPayLoad;
 			const {is_temp_2fa, id} = payload;
+			
 			if(!is_temp_2fa){
 				throw new ForbiddenException("Token không hợp lệ cho tác vụ này");
 			}

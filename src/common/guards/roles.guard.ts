@@ -13,7 +13,11 @@ export class RolesGuard implements CanActivate{
     }
     canActivate(context: ExecutionContext): boolean | Promise<boolean> | Observable<boolean> {
         //lấy danh sách các quyên role mà api  yêu cầu
-        const requiredRoles = this.reflector.get<number[]>('roles',context.getHandler());
+        const requiredRoles = this.reflector.getAllAndOverride<number[]>('roles',[
+            context.getHandler(),
+            context.getClass()
+        ]
+        );
         //nếu ko có yêu cầu gì chỉ đang nhập thì cho qua luôn
         if(!requiredRoles){
             return true
