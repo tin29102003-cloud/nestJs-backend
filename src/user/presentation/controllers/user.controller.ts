@@ -1,11 +1,11 @@
-import { Controller, Get, Logger, Query, Req, Res, UseGuards } from '@nestjs/common';
+import { Controller, Get, Logger, Param, Query, Req, Res, UseGuards } from '@nestjs/common';
 import { type Response, type Request } from 'express';
 import { ROLE } from 'src/common/constants/auth.constaint';
 import { Roles } from 'src/common/decorator/roles.decorator';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { UserService } from 'src/user/application/service/user.service';
-import { PaginationUserDto } from '../dto/user.dto';
+import { PaginationUserDto, ParamsIdDto } from '../dto/user.dto';
 
  @UseGuards(JwtAuthGuard,RolesGuard)
 //  @Roles(ROLE.ADMIN) 
@@ -31,4 +31,16 @@ export class UserController {
             result
         }
     }
+    @Get('/:id')
+    async GetUserById(
+        @Param() params: ParamsIdDto,
+        @Req() req: Request
+    ){
+        const result = await this.userService.GetOneUserById(Number(params.id));
+        return {
+            message: "Lấy thông tin người dùng thành công",
+            result
+        }
+    }
+    
 }

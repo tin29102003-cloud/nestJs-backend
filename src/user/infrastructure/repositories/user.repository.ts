@@ -33,9 +33,18 @@ export class UserRepository implements UserRepositoryIntereface{
             })
             return  user ? this.ToEntity(user): null//chuyeen usermodel thanh entity
         }
-        async FindUserById(id: number): Promise<User | null> {
-            const user =  await this.userModel.findByPk(id);
-             return  user ? this.ToEntity(user): null
+        async FindUserById(id: number, attributes?: string[]): Promise<User | null> {
+            const queryOptions: {
+                where: { id: number };
+                attributes?: FindAttributeOptions} 
+                = {
+                    where: { id }
+                }
+            if (attributes && attributes.length > 0) {
+                queryOptions.attributes = attributes;
+            }
+            const user =  await this.userModel.findOne(queryOptions);
+            return  user ? this.ToEntity(user): null
         }
         async FindUserBy(condition: Partial<User>): Promise<User | null> {
             const user = await this.userModel.findOne({

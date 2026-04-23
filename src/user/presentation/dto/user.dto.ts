@@ -56,3 +56,7 @@ export class UserResponseDto {
     @Expose()
     createdAt!: Date;
 }
+export class ParamsIdDto {
+    @IsNumberString({}, { message: 'ID phải là số' })
+    id!: string;
+}

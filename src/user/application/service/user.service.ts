@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { SortOderType, SortOrder } from 'src/common/constants/user.constaint';
 import { User } from 'src/user/domain/entities/user.entity';
@@ -32,6 +32,12 @@ export class UserService {
     }
     async findAndCountUserBy( limit: number, offset: number, order?: [string, SortOderType][], attributes?: string[],condition?: Partial<User>,): Promise<{rows: User[] , count: number,}>{
         return await this.userRepository.findAndCountUserBy(limit, offset, order, attributes, condition);
+    }
+    async FindUserBy(id: number, attributes?: string[]): Promise<User | null>{
+        return await this.userRepository.FindUserById(id, attributes);
+    }
+    async findUserById(id: number, attributes?: string[]): Promise<User | null>{
+        return await this.userRepository.FindUserById(id, attributes);
     }
     private getPaginationParams(maxLimit: number,page?: string, limit?: string )  {
         const pageSafe = Math.max(1, Number(page) || 1);
@@ -69,5 +75,17 @@ export class UserService {
         );
         return this.getResulData(result.rows, result.count, limitSafe, pageSafe);
         
+    }
+    async GetOneUserById(id: number): Promise<UserResponseDto | null>{
+        const user = await this.userRepository.FindUserById(
+            id,
+            ['id','tai_khoan','email','ho_ten','ten_shop','vai_tro','hinh','provider','provider_id','khoa','dien_thoai','login_failed_count','last_login_fail','is_shop','createdAt'],
+        );
+        if(!user){
+            throw new NotFoundException('Không tìm thấy người dùng');
+        }
+        return plainToInstance(UserResponseDto, user, {
+            excludeExtraneousValues: true
+        });
     }
 }
