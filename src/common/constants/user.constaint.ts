@@ -5,3 +5,7 @@ export enum SortOrder {
 export type  SortOderType =
     | 'ASC'
     | 'DESC';
+export const ROLE_MAP: Record<number, string> = {
+    0: 'public',
+    1: 'admin',
+}

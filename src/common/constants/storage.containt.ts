@@ -1,0 +1,1 @@
+export type Multer = Express.Multer.File

@@ -1,16 +1,20 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Inject, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
+import { Multer } from 'src/common/constants/storage.containt';
 import { SortOderType, SortOrder } from 'src/common/constants/user.constaint';
 import { User } from 'src/user/domain/entities/user.entity';
 import { USER_REPOSITORY_INTERFACE, type UserRepositoryIntereface } from 'src/user/domain/interface/user.repository.interface';
-import { UserResponseDto } from 'src/user/presentation/dto/user.dto';
-
+import { CreateUserDto, UserResponseDto } from 'src/user/presentation/dto/user.dto';
+import bcrypt  from 'bcryptjs';
+import { type IStorageService, STORAGE_SERVICE } from 'src/common/storage/domain/interfaces/storage.interface';
 
 @Injectable()
 export class UserService {
     constructor(
         @Inject(USER_REPOSITORY_INTERFACE)// tiêm cái inter vào. nestjt sẽ tự nhet thằng user repository vô
-        private readonly userRepository: UserRepositoryIntereface
+        private readonly userRepository: UserRepositoryIntereface,
+        @Inject(STORAGE_SERVICE)
+        private readonly storageService: IStorageService
     ){}
     async FindFirstByOr(condition: Partial<User>[]): Promise<User | null>{
         return await this.userRepository.findUserByOr(condition);
@@ -87,5 +91,45 @@ export class UserService {
         return plainToInstance(UserResponseDto, user, {
             excludeExtraneousValues: true
         });
+    }
+    async createUserByAdmin(dto :CreateUserDto, fieldName: string, file?: Multer){
+        if(!file){
+            throw new BadRequestException("Bạn cần phải chọn 1 hình để tạo User");
+        }
+        
+
+        if(dto.mat_khau !== dto.mat_khau_nhap_lai){
+            throw new BadRequestException("Mật khẩu không trùng mật khẩu nhập lại");
+        }
+        const existing = await this.FindFirstByOr([{tai_khoan: dto.tai_khoan}, {email: dto.email}]);
+        if(existing){
+            if(existing.tai_khoan === dto.tai_khoan){
+                throw  new ConflictException("Tài khoản đã tồn tại, vui lòng Nhập tài khoản khác nhá");
+            }
+            if(existing.email === dto.email){
+                throw new ConflictException("Email đã tồn tại, vui lòng nhập email khác");
+            }
+        }
+        
+        const salt = await bcrypt.genSalt(10);
+        const  hashed = await bcrypt.hash(dto.mat_khau, salt);
+        let hinhUrl: string | null = null;
+        try {
+            hinhUrl = await this.storageService.saveFile(file, fieldName);
+            const newUser = await this.createUser({
+                tai_khoan: dto.tai_khoan,
+                email: dto.email,
+                mat_khau: hashed,
+                xac_thuc_email_luc: new Date(),
+                hinh: hinhUrl,
+                vai_tro: dto.vai_tro
+            });
+            return newUser;
+        } catch (error) {
+           if(hinhUrl){
+            await this.storageService.deleteFile(hinhUrl);
+           }
+           throw new InternalServerErrorException("Lỗi máy chủ khi thêm user");
+        }
     }
 }
