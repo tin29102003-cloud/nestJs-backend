@@ -69,8 +69,8 @@ export class UserModel extends Model {
   declare provider_id: string;
 
   @Default(0)
-  @Column(DataType.TINYINT)
-  declare khoa: number;
+  @Column(DataType.BOOLEAN)
+  declare khoa: boolean;
 
   @Column(DataType.STRING)
   declare token: string | null;

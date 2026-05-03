@@ -21,10 +21,6 @@ export class LocalStorageService implements IStorageService {
         }
         return null;  
     }
-    private getPhysicalPath(fileUrl: string): string {
-        // Hàm path.join sẽ tự động thêm "public" và lo việc đổi dấu / hay \ cho bạn
-        return path.join(process.cwd(), 'public', fileUrl);
-    }
     async saveFile(file: Express.Multer.File, fieldName: string): Promise<string> {
         let uploadPath = '';
         switch (fieldName) {
@@ -74,14 +70,30 @@ export class LocalStorageService implements IStorageService {
         }
     }
     async deleteFile(filePath: string):Promise<void> {
-        try {
             if(!filePath) return;
             const physicalPath = path.join(process.cwd(),'public',filePath);//module cua path sẽ tự cvhuyeen dấu từ \\ thành /
-            await fs.unlink(physicalPath);
-            this.logger.log(`[Storage] Đã dọn dẹp file rác: ${physicalPath}`);
             
-        } catch (error) {
-            this.logger.error(`[Storage] Không thể xóa file: ${filePath}`, error)
-        }
+            try{
+                await fs.unlink(physicalPath);
+                this.logger.log(`[Storage] Đã dọn dẹp file rác: ${physicalPath}`);
+            }catch(error: any){
+                const err = error as NodeJS.ErrnoException;
+                if(err.code === 'ENOENT'){
+                    return;
+                }    
+            throw error;
+            }
+    }
+    async deleteManyFile(files: string[]) {
+        const results = await Promise.allSettled(
+            files.map(file=> this.deleteFile(file))
+        );//thằng này du xóa failed cung ko băt lỗi
+        results.forEach((result, index)=>{
+            if(result.status === 'rejected' ){
+                this.logger.warn(`Không thể xóa file ${files[index]}`,
+                    result.reason?.message
+                );
+            }
+        });//thằng này để bieert thang nào ko xoa dc
     }
 }

@@ -18,7 +18,7 @@ export class User {
   provider: string = 'local';
   provider_id: string | null = null;
 
-  khoa: number = 0;
+  khoa: boolean = false;
 
   token: string | null = null;
   token_expire: Date | null = null;

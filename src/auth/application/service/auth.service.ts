@@ -119,7 +119,7 @@ export class AuthService {
 		};
 		const remaining = PERM_LOCK_MAX - failCount;
 		if(failCount > PERM_LOCK_MAX){
-			updatedata.khoa = 1;
+			updatedata.khoa = true;
 			updatedata.locked_until = null;
 			this.userService.UpdateUser({id: user.id}, updatedata);
 			
@@ -142,7 +142,7 @@ export class AuthService {
 		if(!user.xac_thuc_email_luc || user.xac_thuc_email_luc > now){
 			throw new HttpException("Bạn cần phải xác thực tài khoản qua mail trước khi đăng nhập",423);
 		}
-		if(user.khoa === 1){
+		if(user.khoa === true){
 			throw new HttpException("Tài khoản đã bị khóa vui lòng liên hệ với bản quản trị để xử lý",423);
 		}
 
@@ -442,7 +442,7 @@ export class AuthService {
 			HttpStatus.LOCKED
 			)
 		}
-		if(user.khoa === BOOLEAN.true){
+		if(user.khoa === true){
 			throw  new HttpException(
 				{
 					message: "Tài khoản đã bị khóa vui lòng liên hệ với ban quản trị viên để được hỗ trợ"
@@ -519,7 +519,7 @@ export class AuthService {
 		if(user.token_version !== token_version){
 			throw  new UnauthorizedException("Refresh token đã hết hạn hoặc bị thu hồi");
 		}
-		if(user.khoa === BOOLEAN.true){
+		if(user.khoa === true){
 			throw  new HttpException(
 				{
 					message: "Tài khoản đã bị khóa vui lòng liên hệ với ban quản trị viên để được hỗ trợ"
@@ -693,14 +693,14 @@ export class AuthService {
 		let user = await this.userService.FindFirstBy({provider_id: providerId, provider: provider});
 		
 		if(user){
-			if(user.khoa === BOOLEAN.true){
+			if(user.khoa === true){
 				throw new HttpException("Tài khoản đã bị khóa vui lòng liên hệ với ban quản trị viên để được hỗ trợ", HttpStatus.LOCKED);
 			}
 			return user;
 		}
 		user = await this.userService.FindFirstBy({email: email});
 		if(user){
-			if(user.khoa === BOOLEAN.true){
+			if(user.khoa === true){
 				throw new HttpException("Tài khoản đã bị khóa vui lòng liên hệ với ban quản trị viên để được hỗ trợ", HttpStatus.LOCKED);
 			}
 			if(user.provider !== AUTH_PROVIDER.LOCAL){

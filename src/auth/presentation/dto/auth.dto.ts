@@ -1,5 +1,7 @@
 import { IsEmail, isNotEmpty, IsNotEmpty, IsNumber, IsNumberString,  IsOptional,  IsString,  Matches , minLength, MinLength, } from 'class-validator'
+import { Trim } from 'src/common/decorator/tranform.decorator';
 export class LoginDto{
+    @Trim()
     @IsNotEmpty({message: "Vui lòng nhập email hoặc tài khoản"})
     @IsString()
     tai_khoan!: string;
@@ -11,11 +13,12 @@ export class LoginDto{
 
 }
 export class RegisterDto {
-  
+  @Trim()
   @IsNotEmpty({ message: 'Bạn chưa nhập tài khoản' })
   @MinLength(5, { message: 'Tài khoản phải có 5 ký tự trở lên' })
   tai_khoan!: string;
 
+  @Trim()
   @IsNotEmpty({ message: 'Bạn chưa nhập email' })
   @IsEmail({}, { message: 'Email chưa đúng định dạng' })
   email!: string
@@ -38,16 +41,19 @@ export class VerifyRegisterDto{
   @IsString()
   @IsOptional()
   email?: string;
+
   @IsOptional()
   @IsString()
   token?: string;
 }
 export class ResendVerifyRegisterDto{
+  @Trim()
   @IsNotEmpty({message: "Bạn chưa nhập email"})
   @IsEmail({}, {message: "Email chưa đúng định dạng"})
   email!: string
 }
 export class OtpChangePassDto {
+  @Trim()
   @IsNotEmpty({message: "Bạn chưa nhập otp"})
   @IsNumberString({},{message: "Otp phải là số"})
   @MinLength(5,{message: "mã otp phải trên 5 ký tự"})
@@ -77,6 +83,7 @@ export class ChangePassDto{
   mat_khau_nhap_lai!: string
 }
 export class SetConversationPinDto{
+  @Trim()
   @IsNotEmpty({message: "Bạn chưa  nhập mã pin mới"})
   @MinLength(3,{message: "Mã pin không được dưới 4 ký tự"})
   @IsNumberString({},{message: "Mã pin phải là số"})
@@ -88,12 +95,14 @@ export class  setUpTwoFactorDto{
   mat_khau!: string
 }
 export class  TurnOnTwoFactorDto{
+  @Trim()
   @IsNotEmpty({message: "Mã bảo vệ không được để trông"})
   @IsNumberString({},{message: "Mã  bảo vệ phải là số"})
   @MinLength(5, {message: "Mã pin không được dưới 4 ký tự"})
   ma_bao_ve!: string
 }
 export class  VerifyTwoFactoryDto{
+  @Trim()
   @IsNotEmpty({message: "Bạn chưa nhập otp"})
   @IsNumberString({},{message: "Otp phải là số"})
   @MinLength(5,{message: "mã otp phải trên 5 ký tự"})

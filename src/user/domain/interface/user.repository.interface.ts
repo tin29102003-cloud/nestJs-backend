@@ -11,5 +11,6 @@ export interface UserRepositoryIntereface{
     CreateUser(condition: Partial<User>): Promise<User>;
     findValidTokenUser(email: string, token: string, time: Date):Promise<User | null>;
     findAndCountUserBy(limit: number, offset: number, order?: [string, SortOderType][], attributes?: string[],condition?: Partial<User>): Promise<{rows: User[] , count: number}>;
-   
+    deleteUser(condition: Partial<User>): Promise<boolean>;
+    SeachUser(keyword: string, limit: number, offset: number, attributes?: string[]): Promise<{rows: User[] , count: number}>;
 }

@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { UserRepositoryIntereface } from "../../domain/interface/user.repository.interface";
 import { InjectModel } from "@nestjs/sequelize";
-import { FindAttributeOptions, Op, Order } from "sequelize";
+import { FindAttributeOptions, Op, Order, WhereOptions } from "sequelize";
 import { AUTH_PROVIDER } from "src/common/constants/auth.constaint";
 import { UserModel } from "../model/user.model";
 import { User } from "src/user/domain/entities/user.entity";
@@ -15,6 +15,21 @@ export class UserRepository implements UserRepositoryIntereface{
         private readonly userModel: typeof UserModel,){}
         private ToEntity(model: UserModel){
             return new User(model.toJSON());
+        }
+        private buildQuery(options: {
+            limit: number;
+            offset: number;
+            condition?: WhereOptions<User> | Partial<User>;
+            order?: Order;
+            attributes?: FindAttributeOptions;
+        }) {
+            return {
+                where: options.condition ?? {},
+                limit: options.limit,
+                offset: options.offset,
+                order: options.order,
+                attributes: options.attributes
+            };
         }
         async findUserByOrWithProvider(condition: Partial<User>[]): Promise<User | null> {
             const user =  await this.userModel.findOne({
@@ -71,27 +86,52 @@ export class UserRepository implements UserRepositoryIntereface{
                     token_expire: {[Op.gt]: time}
                 }
            });
-        return  user ? this.ToEntity(user): null
+            return  user ? this.ToEntity(user): null
         }  
+      
         async findAndCountUserBy(limit: number, offset: number, order?: [string, SortOderType][], attributes?: string[],condition?: Partial<User>): Promise<{ rows: User[]; count: number; }> {
-            const queryOptions: {
-                where: Partial<User>;
-                limit: number;
-                offset: number;
-                order?: Order;
-                attributes?: FindAttributeOptions;
-            } = {
-                where: condition ?? {},
-                limit: limit,
-                offset: offset
-            };
+            const queryOptions = this.buildQuery({
+                limit : limit,
+                offset: offset,
+                condition: condition
+            })
             if(order &&  order.length > 0){
                 queryOptions.order = order;
             }
             if(attributes && attributes.length > 0){
-                queryOptions.attributes = attributes;
+                queryOptions.attributes = attributes
             }
+
             const { rows, count } = await this.userModel.findAndCountAll(queryOptions);
-        return { rows:  rows.map((row) => this.ToEntity(row)) , count };
+            return { rows:  rows.map((row) => this.ToEntity(row)) , count };
+        }
+        async deleteUser(condition: Partial<User>): Promise<boolean> {
+            const deleteCount = await this.userModel.destroy({
+                where: condition
+            })
+            return deleteCount > 0
+        }
+        async SeachUser(keyword: string, limit: number, offset: number, attributes?: string[]): Promise<{ rows: User[]; count: number; }> {
+            const query = this.buildQuery({
+                limit,
+                offset,
+                condition: {
+                    [Op.or]: [
+                        { ho_ten: { [Op.like]: `%${keyword}%` } },
+                        { email: { [Op.like]: `%${keyword}%` } }
+                    ]
+                },
+                
+            })
+            if(attributes &&  attributes.length > 0){
+                query.attributes = attributes;
+            }
+            const {rows, count} = await this.userModel.findAndCountAll(query);
+            return {
+                rows: rows.map((row)=> this.ToEntity(row)), 
+                count
+            }
+            
         }
 }
+        
