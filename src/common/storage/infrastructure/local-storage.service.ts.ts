@@ -78,7 +78,8 @@ export class LocalStorageService implements IStorageService {
                 this.logger.log(`[Storage] Đã dọn dẹp file rác: ${physicalPath}`);
             }catch(error: any){
                 const err = error as NodeJS.ErrnoException;
-                if(err.code === 'ENOENT'){
+                if(err.code === 'ENOENT'){//dong ý nếu file ko tồn tại thì thôi, ko cần bắt lỗi nữa
+                    this.logger.warn(`[Storage] Không tìm thấy file để xóa: ${physicalPath}`);
                     return;
                 }    
             throw error;

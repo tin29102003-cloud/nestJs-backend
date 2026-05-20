@@ -11,6 +11,7 @@ import { UserModule } from './user/user.module';
 import { StorageModule } from './common/storage/storage.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
+import { RealtimeModule } from './realtime/realtime.module';
 @Module({
   imports: [
      ServeStaticModule.forRoot({
@@ -23,14 +24,15 @@ import { join } from 'path';
       load: [databaseConfig]
     }), ThrottlerModule.forRoot([
       {ttl: 60000, //60s
-      limit: 100 //globbal 60s
+      limit: 10000 //globbal 60s
       }
     ]),
     DatabaseModule,
     AuthModule,
     UserModule,
     NotificationModule,
-    StorageModule
+    StorageModule,
+    RealtimeModule
   ]
 })
 export class AppModule {}

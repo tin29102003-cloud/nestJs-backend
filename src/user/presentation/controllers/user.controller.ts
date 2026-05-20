@@ -7,9 +7,10 @@ import { UserService } from 'src/user/application/service/user.service';
 import { CreateUserDto, Disble2FaDto, PaginationUserDto, ParamsIdDto, QuickUpdateUserDto, UpdateUserDto } from '../dto/user.dto';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { ROLE_MAP } from 'src/common/constants/user.constaint';
+import { Roles } from 'src/common/decorator/roles.decorator';
 
  @UseGuards(JwtAuthGuard,RolesGuard)
-//  @Roles(ROLE.ADMIN) 
+ @Roles(ROLE.ADMIN) 
 @Controller('api/admin/user')
 export class UserController {
      constructor(

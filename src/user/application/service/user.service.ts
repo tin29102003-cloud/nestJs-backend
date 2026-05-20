@@ -10,6 +10,7 @@ import { type IStorageService, STORAGE_SERVICE } from 'src/common/storage/domain
 import { logger } from 'handlebars';
 import { Roles } from 'src/common/decorator/roles.decorator';
 import { ROLE } from 'src/common/constants/auth.constaint';
+import { type IRealtimeService, REALTIME_SERVICE } from 'src/realtime/domain/realtime.interface';
 
 @Injectable()
 export class UserService {
@@ -18,7 +19,10 @@ export class UserService {
         @Inject(USER_REPOSITORY_INTERFACE)// tiêm cái inter vào. nestjt sẽ tự nhet thằng user repository vô
         private readonly userRepository: UserRepositoryIntereface,
         @Inject(STORAGE_SERVICE)
-        private readonly storageService: IStorageService
+        private readonly storageService: IStorageService,
+        @Inject(REALTIME_SERVICE)
+        private readonly realtimeService: IRealtimeService
+
     ){}
     async FindFirstByOr(condition: Partial<User>[]): Promise<User | null>{
         return await this.userRepository.findUserByOr(condition);
@@ -157,7 +161,7 @@ export class UserService {
                     this.logger.warn(`Không thể xóa hình ${hinhUrl}`)
                 })
            }
-           throw new Error;
+           throw error;
         }
     }
     async updateUserByAdmin(id: number,dto: UpdateUserDto, fieldName: string, file?: Multer){
@@ -202,6 +206,9 @@ export class UserService {
             if(Object.keys(allowUpdate).length > 0){
                 await this.UpdateUser({id},allowUpdate);
                 await this.storageService.deleteManyFile(oldFileToDelete);
+                if(shouldInvalidateToken){
+                    this.realtimeService.forceLogoutUser(user.id, "Thông tin của bạn đã được admin thay đổi vui lòng đăng nhập lại!");
+                }
                 return {
                     update: true,
                     user

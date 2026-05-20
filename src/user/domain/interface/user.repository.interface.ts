@@ -1,7 +1,7 @@
 import { SortOderType } from "src/common/constants/user.constaint";
 import { User } from "../entities/user.entity";
 
-export const  USER_REPOSITORY_INTERFACE = 'UserRepositoryIntereface';
+export const  USER_REPOSITORY_INTERFACE = Symbol('UserRepositoryIntereface');
 export interface UserRepositoryIntereface{
     findUserByOrWithProvider(condition: Partial<User>[]): Promise<User | null>;
     findUserByOr(condition: Partial<User>[]): Promise<User | null> 
