@@ -6,11 +6,12 @@ import { UserRepository } from './infrastructure/repositories/user.repository';
 import { UserModel } from './infrastructure/model/user.model';
 import { UserController } from './presentation/controllers/user.controller';
 import { AuthModule } from 'src/auth/auth.module';
+import { NotificationModule } from 'src/notification/notification.module';
 
 
 
 @Module({
-  imports: [SequelizeModule.forFeature([UserModel])],//quản lý bảng user
+  imports: [SequelizeModule.forFeature([UserModel]), NotificationModule],//quản lý bảng user
   providers: [UserService,{
     provide: USER_REPOSITORY_INTERFACE,
     useClass: UserRepository

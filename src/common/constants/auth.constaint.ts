@@ -96,3 +96,4 @@ export interface dataToSendLogin{
     clientUrl: string;
     source: 'facebook-auth' | 'google-auth';//key để fe nó nhận diện là dữ lieuj trả về của login google hoặc faceboook
 }
+export const  ADMIN_ROLE_ID = 1

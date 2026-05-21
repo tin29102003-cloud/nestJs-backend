@@ -25,3 +25,16 @@ export interface CustomSocket extends Socket{
         user: SocketAuthUser
     }
 }
+export enum SocketRoomName{
+    notificationNew = "new_notification",
+    notificationRead = "read_notification",
+    notificationDelete = "delete_notification",
+    forceLogout = "force_logout",
+    joinchat = 'join_chat',
+    leavechat = 'leave_chat',
+    typing = 'typing',
+    usertyping = 'user_typing',
+    receivemessage = 'receive_message',
+    readMessage = 'read_message',
+    recallMessage = 'recall_message'
+}

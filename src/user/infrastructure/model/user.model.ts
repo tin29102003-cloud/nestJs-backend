@@ -16,7 +16,7 @@ export class UserModel extends Model {
   @Column({
     type: DataType.STRING,
     set(value: string) {
-      this.setDataValue('tai_khoan', value?.trim());
+      this.setDataValue('tai_khoan', typeof value === 'string' ? value.trim() : value);
     },
   })
   declare tai_khoan: string;
@@ -25,7 +25,7 @@ export class UserModel extends Model {
   @Column({
     type: DataType.STRING,
     set(value: string) {
-      this.setDataValue('email', value?.trim());
+      this.setDataValue('email', typeof value === 'string' ? value.trim() : value);
     },
   })
   declare email: string;
@@ -36,7 +36,7 @@ export class UserModel extends Model {
   @Column({
     type: DataType.STRING,
     set(value: string) {
-      this.setDataValue('ho_ten', value?.trim());
+      this.setDataValue('ho_ten', typeof value === 'string' ? value.trim() : value);
     },
   })
   declare ho_ten: string | null;
@@ -44,7 +44,7 @@ export class UserModel extends Model {
   @Column({
     type: DataType.STRING,
     set(value: string) {
-      this.setDataValue('ten_shop', value?.trim());
+      this.setDataValue('ten_shop', typeof value === 'string' ? value.trim() : value);
     },
   })
   declare ten_shop: string | null;
@@ -87,7 +87,7 @@ export class UserModel extends Model {
   @Column({
     type: DataType.STRING,
     set(value: string) {
-      this.setDataValue('otp', value?.trim());
+      this.setDataValue('otp', typeof value === 'string' ? value.trim() : value);
     },
   })
   declare otp: string | null;
@@ -98,7 +98,7 @@ export class UserModel extends Model {
   @Column({
     type: DataType.STRING,
     set(value: string) {
-      this.setDataValue('dien_thoai', value?.trim());
+      this.setDataValue('dien_thoai', typeof value === 'string' ? value.trim() : value);
     },
   })
   declare dien_thoai: string | null;
@@ -120,7 +120,7 @@ export class UserModel extends Model {
   @Column({
     type: DataType.STRING,
     set(value: string) {
-      this.setDataValue('message_protection_code', value?.trim());
+      this.setDataValue('message_protection_code', typeof value === 'string' ? value.trim() : value);
     },
   })
   declare message_protection_code: string | null;
@@ -128,7 +128,7 @@ export class UserModel extends Model {
   @Column({
     type: DataType.STRING,
     set(value: string) {
-      this.setDataValue('two_fa_secret', value?.trim());
+      this.setDataValue('two_fa_secret', typeof value === 'string' ? value.trim() : value);
     },
   })
   declare two_fa_secret: string | null;

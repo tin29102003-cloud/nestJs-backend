@@ -9,8 +9,11 @@ import bcrypt  from 'bcryptjs';
 import { type IStorageService, STORAGE_SERVICE } from 'src/common/storage/domain/interfaces/storage.interface';
 import { logger } from 'handlebars';
 import { Roles } from 'src/common/decorator/roles.decorator';
-import { ROLE } from 'src/common/constants/auth.constaint';
+import { ADMIN_ROLE_ID, ROLE } from 'src/common/constants/auth.constaint';
 import { type IRealtimeService, REALTIME_SERVICE } from 'src/realtime/domain/realtime.interface';
+import { NOTIFICATION_REPOSITORY_INTERFACE, type NotificationRepositoryInterface } from 'src/notification/domain/interface/notificationsytem.interface';
+import {  NotificationTemplate, NotificationTitle, NotificationTypeEntity, VAI_TRO_NHAN } from 'src/common/constants/notification.constant';
+import { buildRoom, SocketRoomName } from 'src/common/constants/realtime.constain';
 
 @Injectable()
 export class UserService {
@@ -21,8 +24,9 @@ export class UserService {
         @Inject(STORAGE_SERVICE)
         private readonly storageService: IStorageService,
         @Inject(REALTIME_SERVICE)
-        private readonly realtimeService: IRealtimeService
-
+        private readonly realtimeService: IRealtimeService,
+        @Inject(NOTIFICATION_REPOSITORY_INTERFACE)
+        private readonly notificationService: NotificationRepositoryInterface
     ){}
     async FindFirstByOr(condition: Partial<User>[]): Promise<User | null>{
         return await this.userRepository.findUserByOr(condition);
@@ -265,8 +269,33 @@ export class UserService {
             otp: null,
             otp_expire: null,
         })
+        const template = NotificationTemplate[NotificationTitle.THAY_DOI_BAO_MAT];
+        const templateAdmin = NotificationTemplate[NotificationTitle.LICH_SU_THAO_TAC]
+        const [newUserNotif, newAdminNotif] = await Promise.all([
+            this.notificationService.createNotification({
+                id_user: userTarget.id,
+                tieu_de: NotificationTitle.THAY_DOI_BAO_MAT,
+                noi_dung: template.content(),
+                loai_thong_bao: NotificationTypeEntity.HE_THONG,
+                id_tham_chieu: userTarget.id,
+                vai_tro_nhan: VAI_TRO_NHAN.PUBLIC,
+                da_doc: false
+            }),
+            this.notificationService.createNotification({
+                id_user: ADMIN_ROLE_ID,
+                tieu_de: NotificationTitle.LICH_SU_THAO_TAC,
+                noi_dung: templateAdmin.content(userTarget.email, dto.ly_do),
+                loai_thong_bao: NotificationTypeEntity.HE_THONG,
+                id_tham_chieu: userTarget.id,
+                vai_tro_nhan: VAI_TRO_NHAN.ADMIN,
+                da_doc: false
+            })
+        ])
+        this.realtimeService.emitToUser(SocketRoomName.notificationNew, buildRoom.user(userTarget.id), newUserNotif);
+        this.realtimeService.emitToUser(SocketRoomName.notificationNew, buildRoom.admin(),newAdminNotif);
+        
+        
 
-        //cái này thêm socket io vào sau
         this.logger.log(`[AUDIT_LOG_SECURITY] Admin ID:${id} đã TẮT 2FA cho User ID:${id}. Lý do: ${dto.ly_do}`)
         return  userTarget;
     }
