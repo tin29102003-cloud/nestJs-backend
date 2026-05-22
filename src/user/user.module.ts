@@ -5,7 +5,7 @@ import { USER_REPOSITORY_INTERFACE } from './domain/interface/user.repository.in
 import { UserRepository } from './infrastructure/repositories/user.repository';
 import { UserModel } from './infrastructure/model/user.model';
 import { UserController } from './presentation/controllers/user.controller';
-import { AuthModule } from 'src/auth/auth.module';
+
 import { NotificationModule } from 'src/notification/notification.module';
 
 

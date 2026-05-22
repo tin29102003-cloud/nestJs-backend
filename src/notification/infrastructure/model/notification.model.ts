@@ -22,7 +22,7 @@ export class NotificationModel extends Model {
             this.setDataValue('tieu_de', typeof val === 'string' ? val.trim() : val)
         }
     })
-    tieu_de!: string;
+    tieu_de!: string ;
 
     @Column({
         type: DataType.TEXT,
@@ -30,7 +30,7 @@ export class NotificationModel extends Model {
             this.setDataValue('noi_dung', typeof val === 'string' ? val.trim() : val)
         }
     })
-    noi_dung!: string;
+    noi_dung!: string | null;
 
     @Column({
         type: DataType.ENUM,

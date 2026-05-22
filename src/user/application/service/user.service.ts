@@ -14,6 +14,7 @@ import { type IRealtimeService, REALTIME_SERVICE } from 'src/realtime/domain/rea
 import { NOTIFICATION_REPOSITORY_INTERFACE, type NotificationRepositoryInterface } from 'src/notification/domain/interface/notificationsytem.interface';
 import {  NotificationTemplate, NotificationTitle, NotificationTypeEntity, VAI_TRO_NHAN } from 'src/common/constants/notification.constant';
 import { buildRoom, SocketRoomName } from 'src/common/constants/realtime.constain';
+import { NotificationService } from 'src/notification/application/notification.service';
 
 @Injectable()
 export class UserService {
@@ -25,8 +26,7 @@ export class UserService {
         private readonly storageService: IStorageService,
         @Inject(REALTIME_SERVICE)
         private readonly realtimeService: IRealtimeService,
-        @Inject(NOTIFICATION_REPOSITORY_INTERFACE)
-        private readonly notificationService: NotificationRepositoryInterface
+        private readonly notificationService: NotificationService
     ){}
     async FindFirstByOr(condition: Partial<User>[]): Promise<User | null>{
         return await this.userRepository.findUserByOr(condition);

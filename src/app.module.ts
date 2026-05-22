@@ -12,6 +12,8 @@ import { StorageModule } from './common/storage/storage.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { RealtimeModule } from './realtime/realtime.module';
+import { BannerService } from './banner/application/services/banner.service';
+import { BannerModule } from './banner/banner.module';
 @Module({
   imports: [
      ServeStaticModule.forRoot({
@@ -32,7 +34,8 @@ import { RealtimeModule } from './realtime/realtime.module';
     UserModule,
     NotificationModule,
     StorageModule,
-    RealtimeModule
+    RealtimeModule,
+    BannerModule
   ]
 })
 export class AppModule {}

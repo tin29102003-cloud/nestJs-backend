@@ -7,6 +7,7 @@ import { NotificationRepository } from './infrastructure/repositories/notificati
 import { NOTIFICATION_REPOSITORY_INTERFACE } from './domain/interface/notificationsytem.interface';
 import { SequelizeModule } from '@nestjs/sequelize';
 import { NotificationModel } from './infrastructure/model/notification.model';
+import { NotificationService } from './application/notification.service';
 
 
 @Module({
@@ -20,7 +21,8 @@ import { NotificationModel } from './infrastructure/model/notification.model';
   },{
     provide: NOTIFICATION_REPOSITORY_INTERFACE,
     useClass: NotificationRepository
-  }],
-  exports: [Notification_Interface, TEMPLATE_INTERFACE, NOTIFICATION_REPOSITORY_INTERFACE]
+  }, 
+  NotificationService],
+  exports: [Notification_Interface, TEMPLATE_INTERFACE, NotificationService]
 })
 export class NotificationModule {}

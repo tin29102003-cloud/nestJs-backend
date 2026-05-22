@@ -122,7 +122,7 @@ export class UserRepository implements UserRepositoryIntereface{
                     ]
                 },
                 
-            })
+            });
             if(attributes &&  attributes.length > 0){
                 query.attributes = attributes;
             }

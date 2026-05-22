@@ -10,7 +10,7 @@ export class JwtAuthGuard implements CanActivate{
 	private readonly jwtKey = process.env.JWT_SECRET || 'co_cai_nit'
 	constructor(
 		private readonly jwtService: JwtService,
-		private readonly userService: UserService
+		private readonly userService: UserService//can co user service de check token version va id cua user trong token co hop le khong
 	){}
 	async canActivate(context: ExecutionContext):  Promise<boolean>  {
 		const req = context.switchToHttp().getRequest<Request>();
