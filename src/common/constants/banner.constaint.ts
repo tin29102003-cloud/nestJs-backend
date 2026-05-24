@@ -5,3 +5,11 @@ export enum BannerPositionType {
     HOME_SLIDER = 'home_slider',
     POPUP = 'popup'
 }
+export interface AllowedUpdateBanner{
+    stt?: number;
+    name?: string;
+    url?: string;
+    img?: string| null;
+    vi_tri?: BannerPositionType;
+    an_hien?: boolean;
+}

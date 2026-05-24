@@ -1,16 +1,18 @@
 import { Injectable } from "@nestjs/common";
-import { InjectModel } from "@nestjs/sequelize";
+import { InjectConnection, InjectModel } from "@nestjs/sequelize";
 import { BannerRepositoryInterface } from "src/banner/domain/interface/banner.interface";
 import { BannerModel } from "../models/banner.model";
 import { Banner } from "src/banner/domain/entities/banner.entity";
-import { FindAttributeOptions, Op, Order, WhereOptions } from "sequelize";
+import { FindAttributeOptions, Op, Order, Sequelize, Transaction, WhereOperators, WhereOptions } from "sequelize";
 import { SortOderType } from "src/common/constants/user.constaint";
 
 @Injectable()
 export class BannerRepository implements BannerRepositoryInterface{
     constructor(
         @InjectModel(BannerModel)
-        private readonly bannerModel: typeof BannerModel
+        private readonly bannerModel: typeof BannerModel,
+        @InjectConnection()
+        private readonly sequelize: Sequelize
     ){}
 
     private toEntity(model: BannerModel){
@@ -46,8 +48,8 @@ export class BannerRepository implements BannerRepositoryInterface{
         const bannerModel = await this.bannerModel.findOne(queryOptions);
         return bannerModel ? this.toEntity(bannerModel) : null;
     }
-    async createBannerBy(condition: Partial<Banner>, data: Partial<Banner>): Promise<Banner> {
-        const bannerModel = await this.bannerModel.create({ ...condition, ...data });
+    async createBanner( data: Partial<Banner>): Promise<Banner> {
+        const bannerModel = await this.bannerModel.create(data);
         return this.toEntity(bannerModel);
     }
     async updateBannerBy(condition: Partial<Banner>, data: Partial<Banner>): Promise<boolean> {
@@ -82,7 +84,7 @@ export class BannerRepository implements BannerRepositoryInterface{
         const bannerModel = await this.bannerModel.findOne({ where: condition });
         return bannerModel ? this.toEntity(bannerModel) : null;
     }
-    async findAndCountUserBy(limit: number, offset: number, order?: [string, SortOderType][], attributes?: string[], condition?: Partial<Banner>): Promise<{ rows: Banner[]; count: number; }> {
+    async findAndCountBannerBy(limit: number, offset: number, order?: [string, SortOderType][], attributes?: string[], condition?: Partial<Banner>): Promise<{ rows: Banner[]; count: number; }> {
         const query = this.buildQuery({
             limit,
             offset,
@@ -100,4 +102,51 @@ export class BannerRepository implements BannerRepositoryInterface{
             count
         };
     }
+    async getMaxValueOfField(fieldName: keyof Banner,condition?: Partial<Banner>): Promise<number | null>{
+        const maxValue = await  this.bannerModel.max(fieldName as string, { where: condition });
+        if(maxValue === null || maxValue === undefined || Number.isNaN(maxValue)){
+            return null
+        }
+        return maxValue as number;
+    }
+    async incrementField(field: keyof Banner, amount: number, condition?: Partial<Banner>): Promise<void> {
+        await this.bannerModel.increment(
+            { [field]: amount },
+            { where: condition }
+        );
+    }
+    async adjustOrderInRange(
+        amount: number,
+        range: { gt?: number; lte?: number; gte?: number; lt?: number },
+        transaction?: Transaction  
+        ): Promise<void> {
+        const sttCondition: WhereOperators = {};
+
+        if (range.gt !== undefined) sttCondition[Op.gt] = range.gt;
+        if (range.lte !== undefined) sttCondition[Op.lte] = range.lte;
+        if (range.gte !== undefined) sttCondition[Op.gte] = range.gte;
+        if (range.lt !== undefined) sttCondition[Op.lt] = range.lt;
+
+        await this.bannerModel.increment(
+            { stt: amount },
+            {
+            where: { stt: sttCondition },
+            transaction  
+            }
+        );
+    }
+    async adjustOrderWithTransaction(
+    currentStt: number,
+    newStt: number
+    ): Promise<void> {
+        await this.sequelize.transaction(async (t) => {
+            if (newStt > currentStt) {
+            await this.adjustOrderInRange(-1, { gt: currentStt, lte: newStt }, t);
+            } else {
+            await this.adjustOrderInRange(+1, { gte: newStt, lt: currentStt }, t);
+            }
+        });
+    }
+
+
 }

@@ -136,7 +136,18 @@ export class Disble2FaDto{
 	ly_do!: string;
 }
 export class QuickUpdateUserDto {
-	@Transform(({ value }) => value === 'true' || value === true)
+	 @Transform(({ value }) => {
+    if (
+        value === 'true' ||
+        value === true ||
+        value === '1' ||
+        value === 1
+        ) {
+        return true;
+        }
+
+        return false;
+    })
 	@IsBoolean()
 	khoa!: boolean;
 }

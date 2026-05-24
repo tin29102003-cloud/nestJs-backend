@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Inject, Logger, Param, Patch, Post, Put, Query, Req, Res,  UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Inject, Logger, Param, Patch, Post, Put, Query, Req, Res,  UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
 import { type Response, type Request } from 'express';
 import { AuthUser, ROLE } from 'src/common/constants/auth.constaint';
 import { JwtAuthGuard } from 'src/common/guards/jwt-auth.guard';
@@ -8,6 +8,7 @@ import { CreateUserDto, Disble2FaDto, PaginationUserDto, ParamsIdDto, QuickUpdat
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { ROLE_MAP } from 'src/common/constants/user.constaint';
 import { Roles } from 'src/common/decorator/roles.decorator';
+import { imgageFileFilter } from 'src/common/ultis/file-upload.ulil';
 
  @UseGuards(JwtAuthGuard,RolesGuard)
  @Roles(ROLE.ADMIN) 
@@ -44,10 +45,11 @@ export class UserController {
             result
         }
     }
+    @HttpCode(HttpStatus.CREATED)
     @Post('/')
     @UseInterceptors(FileFieldsInterceptor([
         {name: 'hinh_user', maxCount: 1}
-    ], {limits: {fieldSize: 10 * 1024 * 1024}}))
+    ], {limits: {fileSize: 10 * 1024 * 1024 }, fileFilter: imgageFileFilter}))
     async CreateUser(
         @Body() body: CreateUserDto,
         @UploadedFiles() files: Record<string, Express.Multer.File[]>
@@ -68,7 +70,7 @@ export class UserController {
     @Put('/:id')
     @UseInterceptors(FileFieldsInterceptor([
         {name: 'hinh_user', maxCount: 1}
-    ],{limits: {fieldSize: 10 * 1024 * 1024}}))
+    ],{limits: {fileSize: 10 * 1024 * 1024 }, fileFilter: imgageFileFilter}))
     async UpdateUser(
         @Param() params: ParamsIdDto,
         @Body() body: UpdateUserDto,

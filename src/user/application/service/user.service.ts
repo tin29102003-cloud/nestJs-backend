@@ -60,6 +60,12 @@ export class UserService {
     }
     async SearchUser(keyword: string, limit: number, offset: number,attributes?: string[]){
         return await this.userRepository.SeachUser(keyword, limit,offset,attributes)
+}
+    private async rollbackImage(imageUrl: string | null): Promise<void> {
+    if (!imageUrl) return;
+    await this.storageService.deleteFile(imageUrl).catch(() => {
+        this.logger.warn(`Không thể xóa hình: ${imageUrl}`);
+    });
     }
     private getPaginationParams(maxLimit: number,page?: string, limit?: string)  {
         const pageSafe = Math.max(1, Number(page) || 1);
@@ -160,39 +166,42 @@ export class UserService {
             });
             return newUser;
         } catch (error) {
-           if(hinhUrl){
-                 await this.storageService.deleteFile(hinhUrl).catch(()=>{
-                    this.logger.warn(`Không thể xóa hình ${hinhUrl}`)
-                })
-           }
+           this.rollbackImage(hinhUrl);
            throw error;
         }
     }
     async updateUserByAdmin(id: number,dto: UpdateUserDto, fieldName: string, file?: Multer){
+        const oldFileToDelete: string[] = [];
+        const allowUpdate: AllowedUpdateUser = {};
+        let shouldInvalidateToken = false;
+        const user = await  this.findUserById(id);
+        if(!user){
+            throw new  NotFoundException("Không tìm thấy user để cập nhật")
+        }
+        if(dto.mat_khau){
+            if(dto.mat_khau !== dto.mat_khau_nhap_lai){
+                throw new BadRequestException("Mật khẩu không trùng với mật khẩu nhập lại");
+            }
+            const salt = await bcrypt.genSalt(10);
+            const  hashedPassword = await bcrypt.hash(dto.mat_khau, salt);
+            allowUpdate.mat_khau = hashedPassword;
+            shouldInvalidateToken = true;
+        }
+        if(user.ho_ten !== dto.ho_ten){
+            allowUpdate.ho_ten = dto.ho_ten
+        }
+        if(user.dien_thoai !== dto.dien_thoai){
+            allowUpdate.dien_thoai = dto.dien_thoai;
+        }
+        if(dto.vai_tro !== user.vai_tro){
+            allowUpdate.vai_tro = dto.vai_tro;
+            shouldInvalidateToken = true
+        }
+         if(shouldInvalidateToken){
+            allowUpdate.token_version = user.token_version + 1;
+        }
         let newHinh: string | null = null
         try{
-            const oldFileToDelete: string[] = [];
-            const allowUpdate: AllowedUpdateUser = {};
-            let shouldInvalidateToken = false;
-            const user = await  this.findUserById(id);
-            if(!user){
-                throw new  NotFoundException("Không tìm thấy user để cập nhật")
-            }
-            if(dto.mat_khau){
-                if(dto.mat_khau !== dto.mat_khau_nhap_lai){
-                    throw new BadRequestException("Mật khẩu không trùng với mật khẩu nhập lại");
-                }
-                const salt = await bcrypt.genSalt(10);
-                const  hashedPassword = await bcrypt.hash(dto.mat_khau, salt);
-                allowUpdate.mat_khau = hashedPassword;
-                shouldInvalidateToken = true;
-            }
-            if(user.ho_ten !== dto.ho_ten){
-                allowUpdate.ho_ten = dto.ho_ten
-            }
-            if(user.dien_thoai !== dto.dien_thoai){
-                allowUpdate.dien_thoai = dto.dien_thoai;
-            }
             if(file){
                 newHinh = await this.storageService.saveFile(file, fieldName);
                 allowUpdate.hinh = newHinh;
@@ -200,13 +209,8 @@ export class UserService {
                     oldFileToDelete.push(user.hinh);
                 }
             }
-            if(shouldInvalidateToken){
-                allowUpdate.token_version = user.token_version + 1;
-            }
-            if(dto.vai_tro !== user.vai_tro){
-                allowUpdate.vai_tro = dto.vai_tro;
-                shouldInvalidateToken = true
-            }
+           
+            
             if(Object.keys(allowUpdate).length > 0){
                 await this.UpdateUser({id},allowUpdate);
                 await this.storageService.deleteManyFile(oldFileToDelete);
@@ -225,11 +229,7 @@ export class UserService {
                 //  message: ` Không có cập nhật gì ở User có ID là ${user.id}`
             }
         }catch(error){
-            if(newHinh){
-                await this.storageService.deleteFile(newHinh).catch(()=>{
-                    this.logger.warn(`Không thể xóa hình ${newHinh}`)
-                })
-            }
+            this.rollbackImage(newHinh)
             throw error;
         }
         

@@ -5,10 +5,10 @@ type  multerFile = Express.Multer.File
 export const imgageFileFilter = (
   req: Request,
   file: multerFile,
-  cb: FileFilterCallback
+  callback: (error: Error | null, acceptFile: boolean) => void
 ) => {
   if (!file.originalname.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
-    return cb(new BadRequestException('Chỉ chấp nhận file ảnh (JPG, PNG, GIF, WEBP)') as any, false);
+    return callback(new BadRequestException('Chỉ chấp nhận file ảnh (JPG, PNG, GIF, WEBP)'), false);
   }
-  cb(null, true);
+  callback(null, true);
 };
