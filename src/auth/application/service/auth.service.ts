@@ -587,7 +587,18 @@ export class AuthService {
 		});
 	}
 	async turnOffTwoFactor(id_user: number, ma_bao_ve: string){
-		await this.checkUserAndVerifyTwoFactor(id_user, ma_bao_ve);
+		const currentUser = await this.userService.FindFirstBy({id: id_user});
+		if(!currentUser || currentUser.provider !== AUTH_PROVIDER.LOCAL || !currentUser.mat_khau){
+			throw new ForbiddenException("Tài khoản không tồn tại hoặc đăng ký bằng facebook và google nên không dùng đc chức năng  này");
+		}
+		if(!currentUser.is_2fa_enable || !currentUser.two_fa_secret){
+			throw new BadRequestException("Tài khoản của bạn chưa bật xác  thực 2 bước");
+		}
+		const secret = CrytoUlti.decrypt(currentUser.two_fa_secret);
+		const isValid = await verify({token: ma_bao_ve, secret: secret, epochTolerance: SECRET_TIME_2FA});
+		if(!isValid.valid){
+			throw new BadRequestException("Mã xác thực không chính xác");
+		}
 		await this.userService.UpdateUser({id: id_user}, {
 			is_2fa_enable: false,
 			two_fa_secret: null
@@ -625,7 +636,7 @@ export class AuthService {
 			tai_khoan: user.tai_khoan,
 			otp: otp
 		}
-		this.notificationServiceSend.send('forget_pass_email',email,"Mã OTP khôi phục mật khẩu" ,payload);
+		this.notificationServiceSend.send('forget_pass_email',email,"Mã OTP xóa xác thực 2 bước" ,payload);
 		return {
 				message: "Đã gửi mã OTP qua gmail, vui lòng kiểm tra mail để thực hiện việc xóa xác thực 2 bước"
 		}

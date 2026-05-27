@@ -16,7 +16,7 @@ import { BannerPositionType } from "src/common/constants/banner.constaint";
 export class BannerModel extends Model {
 
     @AllowNull(false)
-    @Default(null)
+    // @Default(null)
     @Column({
         type: DataType.INTEGER,
     })

@@ -75,6 +75,13 @@ export class BannerService {
         const maxOrder = await this.getMaxValueOfField('stt');
         return (maxOrder ?? 0) + 1;
     }
+
+    private async rollbackImage(imageUrl: string | null): Promise<void> {
+        if (!imageUrl) return;
+        await this.storageService.deleteFile(imageUrl).catch(() => {
+            this.logger.warn(`Không thể xóa hình: ${imageUrl}`);
+        });
+    }
     async FindAllBanner(keyword?: string, page?: string, limit?: string) {
         const  {pageSafe, limitSafe, offset} = this.getPaginationParams(10, page, limit);
         const  result = !keyword ? await this.bannerRepository.findAndCountBannerBy(limitSafe, offset, [['createdAt', SortOrder.DESC]]) : await this.bannerRepository.searchBanner(keyword, limitSafe, offset);
@@ -86,12 +93,6 @@ export class BannerService {
             throw  new NotFoundException(`Không tìm thấy banner với ID ${id}`);
         }
         return banner;
-    }
-    private async rollbackImage(imageUrl: string | null): Promise<void> {
-        if (!imageUrl) return;
-        await this.storageService.deleteFile(imageUrl).catch(() => {
-            this.logger.warn(`Không thể xóa hình: ${imageUrl}`);
-        });
     }
     async createBannerAdmin(dto: CreateBannerDto, fieldName: string, file?: Multer){
         if(!file){

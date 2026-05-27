@@ -14,6 +14,7 @@ import { join } from 'path';
 import { RealtimeModule } from './realtime/realtime.module';
 import { BannerService } from './banner/application/services/banner.service';
 import { BannerModule } from './banner/banner.module';
+import { NewsCategoryModule } from './news_category/news_category.module';
 @Module({
   imports: [
      ServeStaticModule.forRoot({
@@ -35,7 +36,8 @@ import { BannerModule } from './banner/banner.module';
     NotificationModule,
     StorageModule,
     RealtimeModule,
-    BannerModule
+    BannerModule,
+    NewsCategoryModule
   ]
 })
 export class AppModule {}

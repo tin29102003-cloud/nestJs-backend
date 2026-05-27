@@ -404,9 +404,9 @@ export class AuthController {
 	async VerifyTwoFactorByEmail(
 		@Req() req: Request,
 		@Body() body: VerifyTwoFactoryDto,
-		@Res() res: Response
+		@Res({passthrough: true}) res: Response
 	){
-		const encryptEmail = req.cookies._userE as string;
+		const encryptEmail = req.cookies._usrE as string;
 		await this.authService.VerifyTwofactoryByEmail(body.otp, encryptEmail);
 		this.CleanCookie('_usrE',res);
 		return {
