@@ -25,11 +25,11 @@ export class BannerService {
     async createBanner(data: Partial<Banner>):Promise<Banner | null> {
         return await this.bannerRepository.createBanner(data);
     }
-    async updateBannerBy(condition: Partial<Banner>, data: Partial<Banner>) {
-        return await this.bannerRepository.updateBannerBy(condition, data);
+    async updateBannerBy(condition: Partial<Banner>, data: Partial<Banner>, transaction?: unknown) {
+        return await this.bannerRepository.updateBannerBy(condition, data, transaction);
     }
-    async deleteBanner(condition: Partial<Banner>) {
-        return await this.bannerRepository.deleteBanner(condition);
+    async deleteBanner(condition: Partial<Banner>, transaction?: unknown) {
+        return await this.bannerRepository.deleteBanner(condition, transaction);
     }
     async searchBanner(keyword: string, limit: number, offset: number, attributes?: string[]) {
         return await this.bannerRepository.searchBanner(keyword, limit, offset, attributes);
@@ -46,9 +46,18 @@ export class BannerService {
     async incrementField(field: keyof Banner, amount: number, condition?: Partial<Banner>): Promise<void>{
         await this.bannerRepository.incrementField(field, amount, condition);
     }
-    async adjustOrderInRangeWithTransaction(currentStt: number, newStt: number): Promise<void>{
-        await this.bannerRepository.adjustOrderWithTransaction(currentStt, newStt);
-    }   
+    // async adjustOrderInRangeWithTransaction(currentStt: number, newStt: number): Promise<void>{
+    //     await this.bannerRepository.adjustOrderWithTransaction(currentStt, newStt);
+    // }   
+    async adjustOrderInRange(amount: number, range: { gt?: number; lte?: number; gte?: number; lt?: number }, transaction?: unknown): Promise<void>{
+        await this.bannerRepository.adjustOrderInRange(amount, range, transaction);
+    }
+    async findBannerByExceptId(condition: Partial<Banner>, id: number): Promise<Banner | null>{
+        return await this.bannerRepository.findBannerByExceptId(condition, id);
+    }
+    async executeTransaction<T>(callback: (transaction: unknown) => Promise<T>): Promise<T>{
+        return await this.bannerRepository.executeTransaction(callback);
+    }
     private getPaginationParams(maxLimit: number,page?: string, limit?: string)  {
         const pageSafe = Math.max(1, Number(page) || 1);
         const limitSafe = Math.max(1, Number(limit) || maxLimit);
@@ -128,7 +137,7 @@ export class BannerService {
             throw new NotFoundException(`Không tìm thấy banner với ID ${id}`);
         }
         if(dto.name !== banner.name){
-            const existingBanner = await this.bannerRepository.findBannerBy({name: dto.name});
+            const existingBanner = await this.findBannerByExceptId({name: dto.name}, id);
             if(existingBanner){
                 throw new ConflictException(`Tên banner đã tồn tại vui lòng nhập cái khác`);
             }
@@ -145,16 +154,11 @@ export class BannerService {
         if(banner.an_hien !== dto.an_hien){
             allowUpdate.an_hien = dto.an_hien;
         }
-        if(dto.stt !== undefined && dto.stt !== banner.stt){
+        if(dto.stt != null && dto.stt !== banner.stt){
             
             allowUpdate.stt = dto.stt;
         }
-        if(Object.keys(allowUpdate).length === 0){
-            return {
-                update: false,
-                banner
-            }
-        }
+       
         let newHinh: string | null = null;
         try{
            
@@ -165,11 +169,28 @@ export class BannerService {
                     oldFileToDelete.push(banner.img);
                 }
             }
-            
-            if(allowUpdate.stt !== undefined){
-                await this.adjustOrderInRangeWithTransaction(banner.stt, allowUpdate.stt);
+             if(Object.keys(allowUpdate).length === 0){
+                return {
+                    update: false,
+                    banner
+                }
             }
-            await this.updateBannerBy({id}, allowUpdate);
+            
+            // if(allowUpdate.stt != null){
+            //     await this.adjustOrderInRangeWithTransaction(banner.stt, allowUpdate.stt);
+            // }
+            // await this.updateBannerBy({id}, allowUpdate);
+            await this.executeTransaction(async (transaction) => {
+                if(allowUpdate.stt != null){
+                    if(allowUpdate.stt > banner.stt){
+                        await this.adjustOrderInRange(-1, { gt: banner.stt, lte: allowUpdate.stt }, transaction);
+                    } else {
+                        await this.adjustOrderInRange(+1, { gte: allowUpdate.stt, lt: banner.stt }, transaction);
+                    }
+                }
+                await this.updateBannerBy({id}, allowUpdate, transaction);
+            });
+           
             if (file && banner.img) {
                 await this.storageService.deleteManyFile(oldFileToDelete);
             }
@@ -189,8 +210,10 @@ export class BannerService {
             throw new NotFoundException(`Không tìm thấy banner với ID ${id}`);
         }
         
-        await this.bannerRepository.adjustOrderInRange(-1, { gt: banner.stt });
-        await this.deleteBanner({id});
+        await this.executeTransaction(async (transaction) => {
+            await this.bannerRepository.adjustOrderInRange(-1, { gt: banner.stt }, transaction);
+            await this.deleteBanner({id}, transaction);
+        });
         if(banner.img){
             await this.storageService.deleteFile(banner.img).catch(() => {
                 this.logger.warn(`Không thể xóa hình: ${banner.img}`);

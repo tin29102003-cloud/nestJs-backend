@@ -13,3 +13,9 @@ export interface AllowedUpdateBanner{
     vi_tri?: BannerPositionType;
     an_hien?: boolean;
 }
+export interface AllowedUpdateDanhMucTin{
+    ten_dm?: string;
+    parent_id?: number|null;
+    stt?: number;
+    an_hien?: boolean;
+}

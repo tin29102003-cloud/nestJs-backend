@@ -1,5 +1,5 @@
 import { Transform } from "class-transformer";
-import { IsBoolean, IsNotEmpty, IsNumberString, IsOptional, IsString } from "class-validator";
+import { IsBoolean, IsNotEmpty, IsNumberString, IsOptional, IsPositive, IsString } from "class-validator";
 import { Trim } from "src/common/decorator/tranform.decorator";
 
 export class PaginationNewsCategoryDto{
@@ -23,6 +23,7 @@ export class CreateNewsCategoryDto{
     ten_dm!: string;
 
     @IsNumberString({}, { message: 'parent id phải là số' })
+    @IsPositive({ message: 'parent id phải là số dương' })
     @IsOptional()
     parent_id?: number;
     
@@ -40,4 +41,10 @@ export class CreateNewsCategoryDto{
         })
     @IsBoolean()
     an_hien!: boolean;
+}
+export class UpdateNewsCategoryDto extends CreateNewsCategoryDto {
+    @IsNumberString({}, {message: 'STT phải là số'})
+    @IsPositive({message: 'STT phải là số dương'})
+    @IsOptional()
+    stt?: number;
 }

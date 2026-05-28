@@ -52,12 +52,12 @@ export class BannerRepository implements BannerRepositoryInterface{
         const bannerModel = await this.bannerModel.create(data);
         return this.toEntity(bannerModel);
     }
-    async updateBannerBy(condition: Partial<Banner>, data: Partial<Banner>): Promise<boolean> {
-        const [affectedCount] = await this.bannerModel.update(data, { where: condition });
+    async updateBannerBy(condition: Partial<Banner>, data: Partial<Banner>, transaction?: Transaction): Promise<boolean> {
+        const [affectedCount] = await this.bannerModel.update(data, { where: condition, transaction });
         return affectedCount > 0;
     }
-    async deleteBanner(condition: Partial<Banner>): Promise<boolean> {
-        const affectedCount = await this.bannerModel.destroy({ where: condition });
+    async deleteBanner(condition: Partial<Banner>, transaction?: Transaction): Promise<boolean> {
+        const affectedCount = await this.bannerModel.destroy({ where: condition, transaction });
         return affectedCount > 0;
     }
     async searchBanner(keyword: string, limit: number, offset: number, attributes?: string[]): Promise<{rows: Banner[] , count: number}> {
@@ -110,10 +110,7 @@ export class BannerRepository implements BannerRepositoryInterface{
         return maxValue as number;
     }
     async incrementField(field: keyof Banner, amount: number, condition?: Partial<Banner>): Promise<void> {
-        await this.bannerModel.increment(
-            { [field]: amount },
-            { where: condition }
-        );
+        await this.bannerModel.increment(field as string, { by: amount, where: condition });
     }
     async adjustOrderInRange(
         amount: number,
@@ -147,6 +144,11 @@ export class BannerRepository implements BannerRepositoryInterface{
             }
         });
     }
-
-
+    async findBannerByExceptId(condition: Partial<Banner>, id: number): Promise<Banner | null> {
+        const bannerModel = await this.bannerModel.findOne({ where: { ...condition, id: { [Op.ne]: id } } });
+        return bannerModel ? this.toEntity(bannerModel) : null;
+    }
+    async executeTransaction<T>(callback: (transaction: Transaction) => Promise<T>): Promise<T> {
+        return this.sequelize.transaction(callback);
+    }
 }
