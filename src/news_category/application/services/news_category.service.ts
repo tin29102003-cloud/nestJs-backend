@@ -1,5 +1,7 @@
 import { BadRequestException, ConflictException, Inject,  Injectable,  Logger, NotFoundException } from '@nestjs/common';
+import { CACHE_SERVICE_INTERFACE, type CacheServiceInterface } from 'src/cache/domain/interface/cache.interface';
 import { AllowedUpdateDanhMucTin } from 'src/common/constants/banner.constaint';
+import { REDIS_KEYS } from 'src/common/constants/redis.constaint';
 import { SortOderType, SortOrder } from 'src/common/constants/user.constaint';
 import { NewsCategory } from 'src/news_category/domain/entities/news-category.entity';
 import { NEWS_CATEGORY_REPOSITORY_INTERFACE, type NewsCategoryRepositoryInterface } from 'src/news_category/domain/interface/news_category.interface';
@@ -11,6 +13,8 @@ export class NewsCategoryService {
     constructor(
           @Inject(NEWS_CATEGORY_REPOSITORY_INTERFACE)
           private readonly newsCategoryRepository: NewsCategoryRepositoryInterface,
+          @Inject(CACHE_SERVICE_INTERFACE)
+          private readonly cache: CacheServiceInterface
     ){
        
     }
@@ -96,13 +100,14 @@ export class NewsCategoryService {
             }
         }
         const newOrder = await this.generateNextOrder();
-        return  await this.createNewsCategory({
+        const newsCategoryResult =  await this.createNewsCategory({
             ten_dm: dto.ten_dm,
             parent_id: dto.parent_id || null,
             stt: newOrder,
             an_hien: dto.an_hien
         });
-       
+       await this.cache.delete(REDIS_KEYS.NEWS_CATEGORY.ALL)
+       return newsCategoryResult;
     }
     async findOneNewsCategoryById(id: number){
         const newsCategory = await this.findNewsCategoryById(id);
@@ -120,6 +125,7 @@ export class NewsCategoryService {
              await this.newsCategoryRepository.adjustOrderInRange(-1, { gt: newsCategory.stt }, transaction);
              await this.deleteNewsCategory({id}, transaction);
         });
+        await this.cache.delete(REDIS_KEYS.NEWS_CATEGORY.ALL)
         // await this.newsCategoryRepository.adjustOrderInRange(-1, { gt: newsCategory.stt});
         // await this.deleteNewsCategory({id});
         
@@ -181,6 +187,7 @@ export class NewsCategoryService {
             }
             await this.updateNewsCategoryBy({id}, allowUpdate, transaction);
         });
+        await this.cache.delete(REDIS_KEYS.NEWS_CATEGORY.ALL);
         return {
             update: true,
             newsCategory

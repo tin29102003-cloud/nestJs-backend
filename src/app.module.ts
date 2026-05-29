@@ -15,6 +15,7 @@ import { RealtimeModule } from './realtime/realtime.module';
 import { BannerService } from './banner/application/services/banner.service';
 import { BannerModule } from './banner/banner.module';
 import { NewsCategoryModule } from './news_category/news_category.module';
+import { CacheModule } from './cache/cache.module';
 @Module({
   imports: [
      ServeStaticModule.forRoot({
@@ -37,7 +38,8 @@ import { NewsCategoryModule } from './news_category/news_category.module';
     StorageModule,
     RealtimeModule,
     BannerModule,
-    NewsCategoryModule
+    NewsCategoryModule,
+    CacheModule
   ]
 })
 export class AppModule {}
