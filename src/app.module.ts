@@ -12,10 +12,11 @@ import { StorageModule } from './common/storage/storage.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { RealtimeModule } from './realtime/realtime.module';
-import { BannerService } from './banner/application/services/banner.service';
+
 import { BannerModule } from './banner/banner.module';
 import { NewsCategoryModule } from './news_category/news_category.module';
 import { CacheModule } from './cache/cache.module';
+import { ProductCategoryModule } from './product_category/product_category.module';
 @Module({
   imports: [
      ServeStaticModule.forRoot({
@@ -39,7 +40,8 @@ import { CacheModule } from './cache/cache.module';
     RealtimeModule,
     BannerModule,
     NewsCategoryModule,
-    CacheModule
+    CacheModule,
+    ProductCategoryModule
   ]
 })
 export class AppModule {}

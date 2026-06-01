@@ -1,0 +1,62 @@
+import {
+    Table,
+    Column,
+    Model,
+    DataType,
+    PrimaryKey,
+    AutoIncrement,
+    AllowNull,
+    Default,
+} from 'sequelize-typescript';
+
+@Table({
+    tableName: 'danh_muc',
+    timestamps: true,
+})
+export class ProductCategoryModel extends Model {
+    @PrimaryKey
+    @AutoIncrement
+    @Column(DataType.INTEGER)
+    declare id: number;
+
+    @AllowNull(false)
+    @Column({ type: DataType.STRING,
+        set(val: string){
+            this.setDataValue(
+                'ten_dm',
+                typeof val === 'string' ? val.trim() : val
+            );
+        }
+    })
+    declare ten_dm: string;
+
+    @AllowNull(false)
+    @Column({ type: DataType.STRING })
+    declare img: string;
+
+    @AllowNull(false)
+    @Default(0)
+    @Column({ type: DataType.INTEGER })
+    declare stt: number;
+
+    @AllowNull(true)
+    @Column({ type: DataType.INTEGER })
+    declare parent_id: number | null;
+
+    
+    @Default(true)
+    @Column({ type: DataType.BOOLEAN })
+    declare an_hien: boolean;
+
+    @AllowNull(false)
+    @Column({ type: DataType.STRING,
+        set(val: string){
+            this.setDataValue(
+                'slug',
+                typeof val === 'string' ? val.trim() : val
+            );
+        }
+     })
+    declare slug: string;
+
+}

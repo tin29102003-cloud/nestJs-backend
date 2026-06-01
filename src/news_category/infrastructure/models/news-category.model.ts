@@ -32,8 +32,7 @@ export class NewsCategoryModel extends Model {
     
     @Default(true)
     @Column({
-        type: DataType.BOOLEAN,
-        defaultValue: true,
+        type: DataType.BOOLEAN
     })
     declare an_hien: boolean;
 }
