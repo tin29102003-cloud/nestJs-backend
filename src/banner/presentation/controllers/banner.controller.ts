@@ -71,7 +71,8 @@ export class BannerController {
         const result = await this.bannerService.updateBannerAdmin(Number(params.id), body, 'hinh_banner', file);
         return {
             success: true,
-            message: result.update ? `Đã cập nhật banner có ID là ${result.banner.id}` : `Không có cập nhật gì ở Banner có ID là ${result.banner.id}`
+            message: result.update ? `Đã cập nhật banner có ID là  ${params.id}` : `Không có cập nhật gì ở Banner có ID là ${params.id}`,
+            result: result.banner
         }
     }
     @Delete('/:id')

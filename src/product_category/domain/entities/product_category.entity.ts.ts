@@ -1,7 +1,7 @@
 export class ProductCategory{
     id!: number;
     ten_dm!: string;
-    img!: string;
+    img: string| null = null;
     stt!: number;
     parent_id: number | null = null;
     an_hien!: boolean;

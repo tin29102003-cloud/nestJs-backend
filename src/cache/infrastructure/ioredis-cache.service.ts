@@ -30,8 +30,12 @@ export class RedisCacheService implements CacheServiceInterface {
         } 
         return JSON.parse(value) as T;
     }
-    async delete(key: string): Promise<void> {
-        await this.redis.del(key);
+    async delete(key: string | string[]): Promise<void> {
+        if (Array.isArray(key)) {
+            await this.redis.del(...key);
+        } else {
+            await this.redis.del(key);
+        }
     }
     async clear(): Promise<void> {
         await this.redis.flushdb();

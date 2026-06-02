@@ -169,7 +169,7 @@ export class BannerService {
                     oldFileToDelete.push(banner.img);
                 }
             }
-             if(Object.keys(allowUpdate).length === 0){
+             if(Object.keys(allowUpdate).length === 0 && !file){
                 return {
                     update: false,
                     banner
@@ -197,7 +197,7 @@ export class BannerService {
 
             return {
                 update: true,
-                banner
+                banner: await this.findBannerById(id)
             };
         }catch(error){
             await this.rollbackImage(newHinh);
