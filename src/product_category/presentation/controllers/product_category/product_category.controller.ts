@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Put, Query, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Put, Query, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
 import { ProductCategoryService } from 'src/product_category/application/services/product_category.service';
 import { CreateProductCategoryDto, PaginationProductCategoryDto, UpdateProductCategoryDto } from '../../dto/product_category.dto';
 import { ParamsIdDto } from 'src/user/presentation/dto/user.dto';
@@ -27,7 +27,7 @@ export class ProductCategoryController {
     }
     @Get('/:id')
     async getProductCategoryById(
-        @Query() params: ParamsIdDto) {
+        @Param() params: ParamsIdDto) {
         const result = await this.productCategoryService.findOneProductCategoryById(Number(params.id));
         return {
             success: true,
@@ -69,5 +69,15 @@ export class ProductCategoryController {
             message: result.updated ? `Đã cập nhật danh mục sản phẩm có ID là ${params.id}` : `Không có cập nhật gì ở danh mục sản phẩm có ID là ${params.id}`,
             result: result.category
        }
+    }
+    @Delete('/:id')
+    async deleteProductCategory(
+        @Param() params: ParamsIdDto
+    ) {
+        await this.productCategoryService.deleteProductCategoryAdmin(Number(params.id));
+        return {
+            success: true,
+            message: `Đã xóa danh mục sản phẩm có ID là ${params.id}`
+        }
     }
 }

@@ -17,6 +17,9 @@ import { BannerModule } from './banner/banner.module';
 import { NewsCategoryModule } from './news_category/news_category.module';
 import { CacheModule } from './cache/cache.module';
 import { ProductCategoryModule } from './product_category/product_category.module';
+import { PtttModule } from './pttt/pttt.module';
+import { PtttService } from './pttt/application/services/pttt.service';
+import { PtttController } from './pttt/presentation/controllers/pttt.controller';
 @Module({
   imports: [
      ServeStaticModule.forRoot({
@@ -41,7 +44,8 @@ import { ProductCategoryModule } from './product_category/product_category.modul
     BannerModule,
     NewsCategoryModule,
     CacheModule,
-    ProductCategoryModule
+    ProductCategoryModule,
+    PtttModule
   ]
 })
 export class AppModule {}

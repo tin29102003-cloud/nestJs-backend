@@ -3,7 +3,7 @@ import { CACHE_SERVICE_INTERFACE, type CacheServiceInterface } from 'src/cache/d
 import { AllowedUpdateDanhMucSP } from 'src/common/constants/product_category.constaint';
 import { REDIS_KEYS } from 'src/common/constants/redis.constaint';
 import { Multer } from 'src/common/constants/storage.containt';
-import { SortOderType } from 'src/common/constants/user.constaint';
+import { SortOderType, SortOrder } from 'src/common/constants/user.constaint';
 import { type IStorageService, STORAGE_SERVICE } from 'src/common/storage/domain/interfaces/storage.interface';
 import { ProductCategory } from 'src/product_category/domain/entities/product_category.entity.ts';
 import { PRODUCT_CATEGORY_REPOSITORY_INTERFACE, type ProductCategoryRepositoryInterface } from 'src/product_category/domain/interface/product_category.interface';
@@ -38,7 +38,7 @@ export class ProductCategoryService {
     async findProductCategoryBy(condition: Partial<ProductCategory>):Promise<ProductCategory | null> {
         return await this.productCategoryRepository.findProductCategoryBy(condition);
     }
-    async findAndCountProductCategoryBy(limit: number, offset: number, order?: [string, 'ASC' | 'DESC'][], attributes?: string[],condition?: Partial<ProductCategory>): Promise<{rows: ProductCategory[] , count: number}> {
+    async findAndCountProductCategoryBy(limit: number, offset: number, order?: [string, SortOderType][], attributes?: string[],condition?: Partial<ProductCategory>): Promise<{rows: ProductCategory[] , count: number}> {
         return await this.productCategoryRepository.findAndCountProductCategoryBy(limit, offset, order, attributes, condition);
     }
     async getMaxValueOfField(fieldName: keyof ProductCategory, condition?: Partial<ProductCategory>): Promise<number | null> {
@@ -148,7 +148,7 @@ export class ProductCategoryService {
     }
     async findAllProductCategory(keyword?: string, page?: string, limit?: string) {
         const { pageSafe, limitSafe, offset } = this.getPaginationParams(20, page, limit);
-        const { rows, count } = await this.searchProductCategory(keyword || '', limitSafe, offset,undefined, [['createdAt', 'ASC']]);
+        const { rows, count } = await this.searchProductCategory(keyword || '', limitSafe, offset,undefined, [['createdAt', SortOrder.DESC]]);
         return this.getResulData(rows, count, limitSafe, pageSafe);
     }
     
@@ -290,6 +290,10 @@ export class ProductCategoryService {
             if(file && category.img){
                 await this.storageService.deleteManyFile(oldFileToDelete);
             }
+            await this.cacheService.delete([
+                REDIS_KEYS.CATEGORY.TREE,
+                REDIS_KEYS.CATEGORY.PARENT
+            ]);
             return {
                 updated: true,
                 category: await this.getProductCategoryById(id)
@@ -298,6 +302,31 @@ export class ProductCategoryService {
         }catch(error){
             await this.rollbackImage(newHinh);
             throw error;
+        }
+
+    }
+    async deleteProductCategoryAdmin(id: number) {
+        const category = await this.getProductCategoryById(id);
+        if(!category){
+            throw new NotFoundException(`Không tìm thấy danh mục sản phẩm với id ${id}`);
+        }
+        const hasChildren = await this.hasChildren(category.id);
+        if(hasChildren){
+            throw new BadRequestException('Không thể xóa danh mục sản phẩm khi có danh mục con');
+        }
+      
+        await this.executeTransaction(async (transaction) => {
+            await this.adjustOrderInRange(-1, { gt: category.stt }, transaction);
+            await this.deleteProductCategory({ id }, transaction);
+        });
+        await this.cacheService.delete([
+            REDIS_KEYS.CATEGORY.TREE,
+            REDIS_KEYS.CATEGORY.PARENT
+        ]);
+        if(category.img){
+            await this.storageService.deleteFile(category.img).catch(() => {
+                this.logger.warn(`Không thể xóa hình: ${category.img}`);
+            });
         }
 
     }

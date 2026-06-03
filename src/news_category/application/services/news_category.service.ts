@@ -121,8 +121,12 @@ export class NewsCategoryService {
         if(!newsCategory){
             throw new NotFoundException(`Không tìm thấy danh mục tin với ID ${id}`);
         }
+        const hasChildren = await this.hasChildren(id);
+        if(hasChildren){
+            throw new BadRequestException('Không thể xóa danh mục tin khi có danh mục con');
+        }
         await this.executeTransaction(async (transaction) => {
-             await this.newsCategoryRepository.adjustOrderInRange(-1, { gt: newsCategory.stt }, transaction);
+             await this.adjustOrderInRange(-1, { gt: newsCategory.stt }, transaction);
              await this.deleteNewsCategory({id}, transaction);
         });
         await this.cache.delete(REDIS_KEYS.NEWS_CATEGORY.ALL)

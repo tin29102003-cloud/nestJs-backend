@@ -211,7 +211,7 @@ export class BannerService {
         }
         
         await this.executeTransaction(async (transaction) => {
-            await this.bannerRepository.adjustOrderInRange(-1, { gt: banner.stt }, transaction);
+            await this.adjustOrderInRange(-1, { gt: banner.stt }, transaction);
             await this.deleteBanner({id}, transaction);
         });
         if(banner.img){
