@@ -11,4 +11,5 @@ export interface PTTTRepositoryInterface {
     findPTTTBy(condition: Partial<PTTT>): Promise<PTTT | null>;
     findAndCountPTTTBy(limit: number, offset: number, order?: [string,SortOderType][], attributes?: string[], condition?: Partial<PTTT>): Promise<{ rows: PTTT[]; count: number }>;
     findPtttByOr(condition: Partial<PTTT>[]): Promise<PTTT | null>;
+    findPTTTByExceptId(condition: Partial<PTTT>, id: number): Promise<PTTT | null>;
 }

@@ -14,11 +14,6 @@ import {
     timestamps: true,
 })
 export class ProductCategoryModel extends Model {
-    @PrimaryKey
-    @AutoIncrement
-    @Column(DataType.INTEGER)
-    declare id: number;
-
     @AllowNull(false)
     @Column({ type: DataType.STRING,
         set(val: string){

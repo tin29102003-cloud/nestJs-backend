@@ -18,8 +18,8 @@ import { NewsCategoryModule } from './news_category/news_category.module';
 import { CacheModule } from './cache/cache.module';
 import { ProductCategoryModule } from './product_category/product_category.module';
 import { PtttModule } from './pttt/pttt.module';
-import { PtttService } from './pttt/application/services/pttt.service';
-import { PtttController } from './pttt/presentation/controllers/pttt.controller';
+
+import { AttributeModule } from './attribute/attribute.module';
 @Module({
   imports: [
      ServeStaticModule.forRoot({
@@ -45,7 +45,8 @@ import { PtttController } from './pttt/presentation/controllers/pttt.controller'
     NewsCategoryModule,
     CacheModule,
     ProductCategoryModule,
-    PtttModule
+    PtttModule,
+    AttributeModule
   ]
 })
 export class AppModule {}

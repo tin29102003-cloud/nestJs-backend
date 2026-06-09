@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { allowedUpdatePTTT } from 'src/common/constants/pttt.constaint';
 import { Multer } from 'src/common/constants/storage.containt';
 import { SortOderType, SortOrder } from 'src/common/constants/user.constaint';
 import { PaginationHelper } from 'src/common/helpers/pagination.helper';
@@ -39,6 +40,9 @@ export class PtttService {
     }
     async findAndCountPTTTBy(limit: number, offset: number, order?: [string, SortOderType][], attributes?: string[], condition?: Partial<PTTT>) {
         return this.ptttRepository.findAndCountPTTTBy(limit, offset, order, attributes, condition);
+    }
+    async findPTTTByExceptId(condition: Partial<PTTT>, id: number) {
+        return this.ptttRepository.findPTTTByExceptId(condition, id);
     }
     // private getPaginationParams(maxLimit: number,page?: string, limit?: string)  {
     //     const pageSafe = Math.max(1, Number(page) || 1);
@@ -120,6 +124,59 @@ export class PtttService {
                 this.logger.warn(`Không thể xóa hình: ${pttt.img}`);
             });
         }
+    }
+    async updatePTTTByAdmin(id: number, dto: CreatePtttDto, imgFieldName: string, file?: Multer) {
+        const pttt = await this.findPTTTById(id);
+        const oldFileToDelete: string[] = [];
+        if(!pttt){
+            throw new NotFoundException(`Không tìm thấy phương thức thanh toán với id ${id}`);
+        }
+        const allowedUpdateData: allowedUpdatePTTT = {};
+        if(dto.ten_pt !== pttt.ten_pt){
+            const existingByName = await this.findPTTTByExceptId({ ten_pt: dto.ten_pt }, id);
+            if(existingByName){
+                throw new ConflictException(`Tên phương thức thanh toán '${dto.ten_pt}' đã tồn tại`);
+            }
+            allowedUpdateData.ten_pt = dto.ten_pt;
+        }
+        if(dto.code !== pttt.code){
+            const existingByCode = await this.findPTTTByExceptId({ code: dto.code }, id);
+            if(existingByCode){
+                throw new ConflictException(`Code phương thức thanh toán '${dto.code}' đã tồn tại`);
+            }
+            allowedUpdateData.code = dto.code;
+        }
+        if(dto.an_hien !== pttt.an_hien){
+            allowedUpdateData.an_hien = dto.an_hien;
+        }
+        if(Object.keys(allowedUpdateData).length === 0 && !file){
+            return {
+                update: false,
+                pttt
+            }
+        }
+        let newHinhUrl: string | null = null;
+        try{
+            if(file){
+                newHinhUrl = await this.storageService.saveFile(file, imgFieldName);
+                allowedUpdateData.img = newHinhUrl;
+                if(pttt.img){
+                    oldFileToDelete.push(pttt.img);
+                }
+            }
+            await this.updatePTTTBy({ id }, allowedUpdateData);
+            if(file && pttt.img){
+                await this.storageService.deleteManyFile(oldFileToDelete);
+            }
+            return {
+                update: true,
+                pttt: await this.findPTTTById(id)
+            }
+        }catch(error){
+            await this.rollbackImage(newHinhUrl);
+            throw error;
+        }
+
     }
 
 }

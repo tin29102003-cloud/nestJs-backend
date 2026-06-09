@@ -3,7 +3,6 @@ import { PtttService } from 'src/pttt/application/services/pttt.service';
 import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Post, Put, Query, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
 import { CreatePtttDto, PaginationPtttDto } from '../dto/pttt.dto';
 import { ParamsIdDto } from 'src/user/presentation/dto/user.dto';
-import { PTTT } from 'src/pttt/domain/entities/pttt.entity';
 import { FileFieldsInterceptor } from '@nestjs/platform-express/multer/interceptors/file-fields.interceptor';
 
 @Controller('/api/admin/pttt')
@@ -58,6 +57,23 @@ export class PtttController {
         return {
             success: true,
             message: "Xóa phương thức thanh toán thành công"
+        }
+    }
+    @Put('/:id')
+    @UseInterceptors(FileFieldsInterceptor([
+        {name: 'hinh_pttt', maxCount: 1}
+    ]))
+    async updatePttt(
+        @Param() params: ParamsIdDto,
+        @Body() body: CreatePtttDto,
+        @UploadedFiles() files: Record<string, Express.Multer.File[]>
+    ) {
+        const file = files?.['hinh_pttt']?.[0] ?? null;
+        const result = await this.ptttService.updatePTTTByAdmin(Number(params.id), body, 'hinh_pttt', file);
+        return {
+            success: true,
+            message: result.update ? `Cập nhật phương thức thanh toán thành công với ID là ${params.id}` : `Không có thông tin nào được cập nhật`,
+            result
         }
     }
 }

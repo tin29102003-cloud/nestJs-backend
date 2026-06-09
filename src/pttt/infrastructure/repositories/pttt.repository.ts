@@ -108,5 +108,13 @@ export class PTTTRepository implements  PTTTRepositoryInterface {
         })
         return  pttt ? this.ToEntity(pttt): null;
     }
+    async findPTTTByExceptId(condition: Partial<PTTT>, id: number): Promise<PTTT | null> {
+        const queryOptions = {
+            ...condition,
+            id: {[Op.not]: id}
+        };
+        const pttt = await this.ptttModel.findOne({ where: queryOptions });
+        return pttt ? this.ToEntity(pttt) : null;
+    }
     
 }
