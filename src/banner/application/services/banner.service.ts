@@ -91,6 +91,18 @@ export class BannerService {
             this.logger.warn(`Không thể xóa hình: ${imageUrl}`);
         });
     }
+    private async applyOrderShift(newStt: number|undefined, oldStt: number, id: number, allowUpdate: AllowedUpdateBanner): Promise<void> {
+        await this.executeTransaction(async (transaction) => {
+                if(newStt != null){
+                    if(newStt > oldStt){
+                        await this.adjustOrderInRange(-1, { gt: oldStt, lte: newStt }, transaction);
+                    } else {
+                        await this.adjustOrderInRange(+1, { gte: newStt, lt: oldStt }, transaction);
+                    }
+                }
+                await this.updateBannerBy({id}, allowUpdate, transaction);
+            });
+    }
     async FindAllBanner(keyword?: string, page?: string, limit?: string) {
         const  {pageSafe, limitSafe, offset} = this.getPaginationParams(10, page, limit);
         const  result = !keyword ? await this.bannerRepository.findAndCountBannerBy(limitSafe, offset, [['createdAt', SortOrder.DESC]]) : await this.bannerRepository.searchBanner(keyword, limitSafe, offset);
@@ -158,7 +170,12 @@ export class BannerService {
             
             allowUpdate.stt = dto.stt;
         }
-       
+         if(Object.keys(allowUpdate).length === 0 && !file){
+                return {
+                    update: false,
+                    banner
+                }
+            }
         let newHinh: string | null = null;
         try{
            
@@ -169,29 +186,25 @@ export class BannerService {
                     oldFileToDelete.push(banner.img);
                 }
             }
-             if(Object.keys(allowUpdate).length === 0 && !file){
-                return {
-                    update: false,
-                    banner
-                }
-            }
+           
             
             // if(allowUpdate.stt != null){
             //     await this.adjustOrderInRangeWithTransaction(banner.stt, allowUpdate.stt);
             // }
             // await this.updateBannerBy({id}, allowUpdate);
-            await this.executeTransaction(async (transaction) => {
-                if(allowUpdate.stt != null){
-                    if(allowUpdate.stt > banner.stt){
-                        await this.adjustOrderInRange(-1, { gt: banner.stt, lte: allowUpdate.stt }, transaction);
-                    } else {
-                        await this.adjustOrderInRange(+1, { gte: allowUpdate.stt, lt: banner.stt }, transaction);
-                    }
-                }
-                await this.updateBannerBy({id}, allowUpdate, transaction);
-            });
+            // await this.executeTransaction(async (transaction) => {
+            //     if(allowUpdate.stt != null){
+            //         if(allowUpdate.stt > banner.stt){
+            //             await this.adjustOrderInRange(-1, { gt: banner.stt, lte: allowUpdate.stt }, transaction);
+            //         } else {
+            //             await this.adjustOrderInRange(+1, { gte: allowUpdate.stt, lt: banner.stt }, transaction);
+            //         }
+            //     }
+            //     await this.updateBannerBy({id}, allowUpdate, transaction);
+            // });
+            await this.applyOrderShift(allowUpdate.stt , banner.stt, id, allowUpdate);
            
-            if (file && banner.img) {
+            if (oldFileToDelete.length > 0) {
                 await this.storageService.deleteManyFile(oldFileToDelete);
             }
 
